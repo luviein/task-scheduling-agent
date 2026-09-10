@@ -1,0 +1,131 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "recorded_at": "2026-09-10T16:05:17+00:00",
+  "cases": [
+    {
+      "case": "search_only",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: search_tasks"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "expected no bookings, got none"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 1 reported titles exist in the task list"
+        },
+        "Summary Faithfulness [GEval]": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "The output accurately reflects the tool result by identifying the single open QA task found and correctly notes that no calendar events were booked, adhering strictly to the user's constraints and the provided context."
+        }
+      }
+    },
+    {
+      "case": "book_high_priority",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, search_tasks"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Write LangGraph agent draft'], expected ['Write LangGraph agent draft']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 3 reported titles exist in the task list"
+        },
+        "Summary Faithfulness [GEval]": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "The output accurately reflects the tool results, correctly identifying the task and confirming the successful booking after an initial conflict was resolved."
+        }
+      }
+    },
+    {
+      "case": "conflict_retry",
+      "metrics": {
+        "Tool Selection": {
+          "score": 0.5,
+          "passed": false,
+          "reason": "never called create_calendar_event"
+        },
+        "Task Execution": {
+          "score": 0.0,
+          "passed": false,
+          "reason": "booked nothing, expected ['Refactor Playwright login suite']; unresolved=True but expected False"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "reported no task titles, nothing to invent"
+        },
+        "Summary Faithfulness [GEval]": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "The output accurately reflects the tool context, which returned no matches for the requested task, and correctly identifies that a booking could not be completed based on the search failure."
+        }
+      }
+    },
+    {
+      "case": "no_such_task",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: search_tasks"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "expected no bookings, got none"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "reported no task titles, nothing to invent"
+        },
+        "Summary Faithfulness [GEval]": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "The output accurately reflects the tool result which showed no matching tasks were found, leading to a correct conclusion that the task could not be scheduled."
+        }
+      }
+    },
+    {
+      "case": "multi_step",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, search_tasks"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Publish DeepEval results', 'Write LangGraph agent draft'], expected ['Publish DeepEval results', 'Write LangGraph agent draft']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 4 reported titles exist in the task list"
+        },
+        "Summary Faithfulness [GEval]": {
+          "score": 0.3,
+          "passed": false,
+          "reason": "The output falsely claims that both tasks were successfully scheduled, but the context indicates the first attempt failed due to a conflict with a Design review, meaning only the second and third attempts were successful."
+        }
+      }
+    }
+  ]
+}

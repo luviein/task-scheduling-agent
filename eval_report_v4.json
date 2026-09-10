@@ -1,0 +1,156 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "recorded_at": "2026-09-10T17:21:43+00:00",
+  "cases": [
+    {
+      "case": "search_only",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "1 calls, ceiling 2"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "expected no bookings, got none"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 1 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "book_high_priority",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "3 calls, ceiling 3"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Write LangGraph agent draft'], expected ['Write LangGraph agent draft']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 3 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "conflict_retry",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "4 calls, ceiling 4"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Refactor Playwright login suite'], expected ['Refactor Playwright login suite']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 2 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "no_such_task",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 0.75,
+          "passed": false,
+          "reason": "4 calls, ceiling 3; search_tasks called 4 times"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "expected no bookings, got none"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 4 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "multi_step",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "4 calls, ceiling 5"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Publish DeepEval results', 'Write LangGraph agent draft'], expected ['Publish DeepEval results', 'Write LangGraph agent draft']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 4 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "ambiguous_target",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "1 calls, ceiling 2"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "expected no bookings, got none"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 4 reported titles exist in the task list"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,503 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "recorded_at": "2026-09-10T15:23:15+00:00",
+  "results": [
+    {
+      "case": "search_only",
+      "instruction": "What QA work do I have open? Don't book anything.",
+      "error": null,
+      "seconds": 7.2,
+      "turns": 2,
+      "path": [
+        "reason",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [
+              {
+                "id": "T-2",
+                "title": "Refactor Playwright login suite",
+                "status": "open",
+                "priority": "medium",
+                "tags": [
+                  "qa",
+                  "testing"
+                ]
+              }
+            ],
+            "count": 1
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I searched for open QA tasks and identified one item for you.",
+        "tasks_found": [
+          "Refactor Playwright login suite"
+        ],
+        "events_created": [],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        }
+      ]
+    },
+    {
+      "case": "book_high_priority",
+      "instruction": "Find my open AI tasks and book an hour tomorrow for the highest priority one.",
+      "error": null,
+      "seconds": 22.2,
+      "turns": 4,
+      "path": [
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [
+              {
+                "id": "T-1",
+                "title": "Write LangGraph agent draft",
+                "status": "open",
+                "priority": "high",
+                "tags": [
+                  "ai",
+                  "portfolio"
+                ]
+              },
+              {
+                "id": "T-3",
+                "title": "Publish DeepEval results",
+                "status": "open",
+                "priority": "high",
+                "tags": [
+                  "ai",
+                  "evals"
+                ]
+              }
+            ],
+            "count": 2
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": false,
+            "event": null,
+            "conflict_with": "Standup"
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-3",
+              "title": "Write LangGraph agent draft",
+              "date": "2026-09-11",
+              "start_time": "10:00",
+              "duration_minutes": 60
+            },
+            "conflict_with": null
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I searched for open AI tasks, identified two high-priority items, and scheduled the task 'Write LangGraph agent draft' for tomorrow at 10:00.",
+        "tasks_found": [
+          "Write LangGraph agent draft",
+          "Publish DeepEval results"
+        ],
+        "events_created": [
+          "Write LangGraph agent draft"
+        ],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-3",
+          "title": "Write LangGraph agent draft",
+          "date": "2026-09-11",
+          "start_time": "10:00",
+          "duration_minutes": 60
+        }
+      ]
+    },
+    {
+      "case": "conflict_retry",
+      "instruction": "Book an hour at 9am tomorrow to work on the Playwright login suite refactor.",
+      "error": null,
+      "seconds": 12.5,
+      "turns": 5,
+      "path": [
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [],
+            "count": 0
+          },
+          "error": null
+        },
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [
+              {
+                "id": "T-2",
+                "title": "Refactor Playwright login suite",
+                "status": "open",
+                "priority": "medium",
+                "tags": [
+                  "qa",
+                  "testing"
+                ]
+              }
+            ],
+            "count": 1
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": false,
+            "event": null,
+            "conflict_with": "Standup"
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-3",
+              "title": "Refactor Playwright login suite",
+              "date": "2026-09-11",
+              "start_time": "10:00",
+              "duration_minutes": 60
+            },
+            "conflict_with": null
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I searched for the task 'Refactor Playwright login suite', found it, and booked a one-hour calendar event for September 11th at 10:00 because the 9:00 slot was unavailable due to a conflict.",
+        "tasks_found": [
+          "Refactor Playwright login suite"
+        ],
+        "events_created": [
+          "Refactor Playwright login suite"
+        ],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-3",
+          "title": "Refactor Playwright login suite",
+          "date": "2026-09-11",
+          "start_time": "10:00",
+          "duration_minutes": 60
+        }
+      ]
+    },
+    {
+      "case": "no_such_task",
+      "instruction": "Schedule two hours tomorrow to do my tax return.",
+      "error": null,
+      "seconds": 26.7,
+      "turns": 4,
+      "path": [
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [],
+            "count": 0
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": false,
+            "event": null,
+            "conflict_with": "Standup"
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-3",
+              "title": "Tax Return",
+              "date": "2026-09-11",
+              "start_time": "11:00",
+              "duration_minutes": 120
+            },
+            "conflict_with": null
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I scheduled a two-hour block for your tax return on September 11, 2026, from 11:00 to 13:00 after finding no existing tasks with that name.",
+        "tasks_found": [],
+        "events_created": [
+          "Tax Return"
+        ],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-3",
+          "title": "Tax Return",
+          "date": "2026-09-11",
+          "start_time": "11:00",
+          "duration_minutes": 120
+        }
+      ]
+    },
+    {
+      "case": "multi_step",
+      "instruction": "Book separate one-hour slots tomorrow afternoon for both of my open high priority AI tasks.",
+      "error": null,
+      "seconds": 35.1,
+      "turns": 5,
+      "path": [
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [
+              {
+                "id": "T-1",
+                "title": "Write LangGraph agent draft",
+                "status": "open",
+                "priority": "high",
+                "tags": [
+                  "ai",
+                  "portfolio"
+                ]
+              },
+              {
+                "id": "T-3",
+                "title": "Publish DeepEval results",
+                "status": "open",
+                "priority": "high",
+                "tags": [
+                  "ai",
+                  "evals"
+                ]
+              }
+            ],
+            "count": 2
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-3",
+              "title": "Write LangGraph agent draft",
+              "date": "2026-09-11",
+              "start_time": "13:00",
+              "duration_minutes": 60
+            },
+            "conflict_with": null
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": false,
+            "event": null,
+            "conflict_with": "Design review"
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-4",
+              "title": "Publish DeepEval results",
+              "date": "2026-09-11",
+              "start_time": "15:00",
+              "duration_minutes": 60
+            },
+            "conflict_with": null
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I scheduled two high priority AI tasks for September 11, 2026. 'Write LangGraph agent draft' is set for 13:00 and 'Publish DeepEval results' is set for 15:00, as the 14:00 slot had a conflict.",
+        "tasks_found": [
+          "Write LangGraph agent draft",
+          "Publish DeepEval results"
+        ],
+        "events_created": [
+          "Write LangGraph agent draft",
+          "Publish DeepEval results"
+        ],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-3",
+          "title": "Write LangGraph agent draft",
+          "date": "2026-09-11",
+          "start_time": "13:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-4",
+          "title": "Publish DeepEval results",
+          "date": "2026-09-11",
+          "start_time": "15:00",
+          "duration_minutes": 60
+        }
+      ]
+    }
+  ]
+}
