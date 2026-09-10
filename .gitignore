@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 .deepeval*
+
+# Google Calendar OAuth: never commit these
+credentials.json
+token.json
