@@ -24,11 +24,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 1 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The output accurately reflects the tool result, which identified one open QA task. The agent correctly avoided booking any tasks as requested and provided a summary consistent with the context provided."
         }
       }
     },
@@ -54,11 +49,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 3 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The output accurately identifies the highest priority task from the tool results and confirms the booking details, including the correct date and time, which align perfectly with the create_calendar_event tool output."
         }
       }
     },
@@ -84,11 +74,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 2 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The agent accurately reported the task found and the booking time of 09:30, while correctly explaining that the requested 09:00 slot was unavailable based on the tool results."
         }
       }
     },
@@ -114,11 +99,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The agent accurately reported that the task was not found based on the search_tasks results and correctly provided the list of available open tasks as context, aligning fully with the tool outputs provided."
         }
       }
     },
@@ -144,11 +124,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The output accurately reflects the tool execution results, confirming both high-priority AI tasks were booked for the requested afternoon timeframe on September 11th. The agent correctly identified the tasks, found available slots, and successfully created the calendar events as described in the tool results."
         }
       }
     },
@@ -174,11 +149,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The agent accurately reported the search results and correctly identified the need for more information from the user before finalizing a booking. It correctly identified the date as Friday, 2026-09-11, and did not hallucinate a completed booking."
         }
       }
     }

@@ -54,8 +54,6 @@ booking nothing must not be able to pass.
 
 ## Results
 
-Five cases, four metrics. Scores are 0 to 1, averaged across cases.
-
 Six cases, five metrics. Scores are 0 to 1, averaged across cases.
 
 | Metric | Judged by | v1 baseline | v2 stricter | v3 broadened | current |
@@ -90,8 +88,9 @@ hallucination would have shown a clean fix and shipped a worse agent.
 more general keyword first.* Every rule-based metric reached 1.00. The
 hallucination stayed fixed and conflict recovery came back.
 
-Every run is preserved as `traces_v*.json` with a matching report, so the
-progression is reproducible rather than recalled.
+Every run is preserved under `runs/history/` with a matching report, so the
+progression is reproducible rather than recalled. The current run lives in
+`runs/`.
 
 **The suite kept earning its place after that.** Adding the ambiguity case caught
 the agent silently choosing a task you never named and booking it. Tool Efficiency
@@ -158,8 +157,9 @@ capped number of revision rounds.
 
 The approval prompt shows the day's existing events and the other free starts,
 computed by the same functions the tools use. Asking the model to explain its
-choice would let the explanation drift from the truth, which is precisely the
-failure mode the judge metric caught twice below.
+choice would let the explanation drift from what actually happened, which is
+exactly the failure mode the judge metric exists to catch and got wrong three
+times below.
 
 ### Availability is computed, not guessed
 
@@ -191,7 +191,7 @@ two JSON Schema dialects.
 ## Eval design
 
 **Runs and scores are separate programs.** `eval_run.py` executes the suite and
-saves traces to disk. `eval_score.py` reads those traces. Model calls are slow,
+saves traces to `runs/traces.json`. `eval_score.py` reads them back. Model calls are slow,
 rate limited, and non-deterministic, so you pay for them once and then iterate on
 metrics for free. It also means scoring is reproducible: the same traces score
 the same way every time.

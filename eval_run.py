@@ -15,7 +15,8 @@ from agent import MODEL, approve_everything, run
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
 
-TRACE_FILE = Path("traces.json")
+RUNS_DIR = Path("runs")
+TRACE_FILE = RUNS_DIR / "traces.json"
 
 
 def run_case(case) -> dict:
@@ -72,6 +73,7 @@ def main() -> None:
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "results": results,
     }
+    RUNS_DIR.mkdir(exist_ok=True)
     TRACE_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote {len(results)} traces to {TRACE_FILE}")
 

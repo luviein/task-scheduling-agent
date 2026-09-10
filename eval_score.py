@@ -26,8 +26,9 @@ from eval_metrics import (
     summary_faithfulness_metric,
 )
 
-TRACE_FILE = Path("traces.json")
-REPORT_FILE = Path("eval_report.json")
+RUNS_DIR = Path("runs")
+TRACE_FILE = RUNS_DIR / "traces.json"
+REPORT_FILE = RUNS_DIR / "report.json"
 
 
 def build_test_cases(traces: list[dict]) -> list[LLMTestCase]:
