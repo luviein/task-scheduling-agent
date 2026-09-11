@@ -141,3 +141,13 @@ def test_final_answer_requires_every_field():
     """Evals assert against these, so a missing one has to fail loudly."""
     with pytest.raises(ValueError):
         FinalAnswer(summary="done")
+
+
+# --- streaming labels -------------------------------------------------------
+def test_every_graph_node_has_a_progress_label():
+    """Add a node without a label and the UI shows a raw function name."""
+    from session import STEP_LABELS
+    from agent import build_agent
+
+    nodes = {name for name in build_agent().nodes if not name.startswith("__")}
+    assert nodes <= set(STEP_LABELS), f"no progress label for {nodes - set(STEP_LABELS)}"

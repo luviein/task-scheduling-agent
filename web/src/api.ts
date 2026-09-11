@@ -132,6 +132,74 @@ export const removeTask = async (id: string) => {
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 };
 
+// One node of the graph finished. Arrives while the run is still going.
+export type Progress = {
+  type: "step";
+  node: string;
+  label: string;
+  turns: number;
+  tools: string[];
+};
+
+type StreamEvent = Progress | (RunStep & { type?: undefined }) | { type: "error"; detail: string };
+
+/** POST and read back server-sent events, calling onProgress until the result arrives.
+ *
+ *  POST rather than EventSource: the instruction is the user's own words and
+ *  should not travel in a URL, where it lands in logs and browser history.
+ */
+async function streamRun(
+  path: string,
+  payload: unknown,
+  onProgress: (step: Progress) => void,
+): Promise<RunStep> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail ?? `${response.status} ${response.statusText}`);
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  let result: RunStep | null = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+
+    // Messages are separated by a blank line, and a chunk can split one in half.
+    const messages = buffer.split("\n\n");
+    buffer = messages.pop() ?? "";
+
+    for (const message of messages) {
+      const line = message.split("\n").find((part) => part.startsWith("data: "));
+      if (!line) continue;
+      const event = JSON.parse(line.slice(6)) as StreamEvent;
+
+      if (event.type === "step") onProgress(event);
+      else if (event.type === "error") throw new Error(event.detail);
+      else result = event as RunStep;
+    }
+  }
+
+  if (!result) throw new Error("The run ended without a result.");
+  return result;
+}
+
+export const startRunStreaming = (instruction: string, onProgress: (step: Progress) => void) =>
+  streamRun("/api/runs/stream", { instruction }, onProgress);
+
+export const sendDecisionStreaming = (
+  threadId: string,
+  decision: Decision,
+  onProgress: (step: Progress) => void,
+) => streamRun(`/api/runs/${threadId}/decision/stream`, { decision }, onProgress);
+
 export const startRun = (instruction: string) =>
   request<RunStep>("/api/runs", {
     method: "POST",

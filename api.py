@@ -16,13 +16,17 @@ model calls, and FastAPI runs sync routes in a threadpool, so one slow run does
 not freeze the server.
 """
 
+import json
+from collections.abc import Iterator
+
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agent import BUSINESS_END, BUSINESS_START, MODEL, DailyQuotaExhausted
 from calendar_backend import get_backend
-from session import RunStep, resume, start
+from session import RunStep, resume, resume_streaming, start, start_streaming
 from task_store import (
     Task,
     TaskDraft,
@@ -142,6 +146,42 @@ def _guard(fn, *args) -> RunStep:
 def create_run(body: StartRequest) -> RunStep:
     """Start a run. Returns at the first approval request, or at the end."""
     return _guard(start, body.instruction)
+
+
+def _sse(events: Iterator) -> StreamingResponse:
+    """Server-sent events, one JSON object per message.
+
+    POST rather than a GET an EventSource could consume, because the instruction
+    is the user's own words and has no business sitting in a URL, where it would
+    land in access logs and browser history.
+    """
+
+    def body():
+        try:
+            for event in events:
+                yield f"data: {event.model_dump_json()}\n\n"
+        except DailyQuotaExhausted as exc:
+            # The stream has already started, so the status line is long gone.
+            # An error event is the only way left to say what happened.
+            yield f'data: {{"type": "error", "detail": {json.dumps(str(exc))}}}\n\n'
+
+    return StreamingResponse(
+        body(),
+        media_type="text/event-stream",
+        # Proxies that buffer would defeat the point of streaming at all.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/runs/stream")
+def create_run_streaming(body: StartRequest) -> StreamingResponse:
+    """Same run as POST /api/runs, but each step is reported as it finishes."""
+    return _sse(start_streaming(body.instruction))
+
+
+@app.post("/api/runs/{thread_id}/decision/stream")
+def decide_streaming(thread_id: str, body: DecisionRequest) -> StreamingResponse:
+    return _sse(resume_streaming(thread_id, body.decision))
 
 
 @app.post("/api/runs/{thread_id}/decision")

@@ -561,8 +561,16 @@ def build_agent():
     # State holds two non-builtin types. Naming them explicitly silences the
     # deserialization warning and, more usefully, opts into the strict allowlist
     # that a future LangGraph will enforce anyway.
+    # Every non-primitive type that lives in AgentState has to be listed, or the
+    # checkpointer refuses to deserialize it on read-back. Missing one is quiet:
+    # the run still works, it just warns and hands back something reshaped.
     serde = JsonPlusSerializer(
-        allowed_msgpack_modules=[("google.genai.types", "Content"), ("tools", "ToolCallResult")]
+        allowed_msgpack_modules=[
+            ("google.genai.types", "Content"),
+            ("tools", "ToolCallResult"),
+            ("agent", "Usage"),
+            ("agent", "FinalAnswer"),
+        ]
     )
     return graph.compile(checkpointer=InMemorySaver(serde=serde))
 

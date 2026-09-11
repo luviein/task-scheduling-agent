@@ -473,6 +473,52 @@ code {
   font-size: 0.85em;
 }
 
+.progress {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.progress li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.progress li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.progress li.pending::before {
+  background: var(--muted);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.progress li.pending .progress-label {
+  color: var(--muted);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress li.pending::before {
+    animation: none;
+  }
+}
+
 .log summary {
   cursor: pointer;
   color: var(--muted);

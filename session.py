@@ -12,6 +12,7 @@ The graph, the nodes, and the approval rules are untouched. This is a different
 way of calling them, not a second implementation.
 """
 
+from collections.abc import Iterator
 from typing import Literal
 from uuid import uuid4
 
@@ -92,6 +93,101 @@ def _advance(thread_id: str, payload: object) -> RunStep:
         turns=state.turns,
         usage=state.usage,
     )
+
+
+# What each node is doing, in words a person waiting on it would use.
+STEP_LABELS = {
+    "reason": "Thinking",
+    "confirm": "Checking whether this needs your approval",
+    "act": "Running tools",
+    "nudge": "Not done yet, going back",
+    "summarize": "Writing up what happened",
+}
+
+
+class Progress(BaseModel):
+    """One node finished. Emitted while the run is still going."""
+
+    type: Literal["step"] = "step"
+    node: str
+    label: str
+    turns: int = 0
+    tools: list[str] = Field(default_factory=list, description="Tools this step just ran.")
+
+
+def _advance_streaming(thread_id: str, payload: object) -> Iterator[Progress | RunStep]:
+    """Drive the graph, yielding each node as it completes, then the result.
+
+    Same graph and same checkpointer as `_advance`. The difference is only that
+    the caller hears about progress instead of waiting in silence, which matters
+    when a run is fifteen seconds of model calls.
+    """
+    config = {"configurable": {"thread_id": thread_id}}
+
+    # Resuming means the log already has entries from before the pause. Starting
+    # at zero would replay them as though they had just happened.
+    resumed = _app().get_state(config)
+    tools_seen = len((resumed.values or {}).get("tool_log", []))
+
+    for chunk in _app().stream(payload, config, stream_mode="updates"):
+        for node, update in chunk.items():
+            if node == "__interrupt__" or not isinstance(update, dict):
+                # The pause is not progress; it is the result, and it comes out
+                # of the final state below like any other ending.
+                continue
+
+            log = update.get("tool_log") or []
+            fresh = [entry.tool for entry in log[tools_seen:]]
+            tools_seen = max(tools_seen, len(log))
+
+            yield Progress(
+                node=node,
+                label=STEP_LABELS.get(node, node),
+                turns=update.get("turns", 0),
+                tools=fresh,
+            )
+
+    yield _snapshot(thread_id, config)
+
+
+def _snapshot(thread_id: str, config: dict) -> RunStep:
+    """Build the same RunStep the blocking path returns, from the saved state."""
+    snapshot = _app().get_state(config)
+    state = AgentState(**snapshot.values)
+
+    pending = [
+        interrupt
+        for task in getattr(snapshot, "tasks", ())
+        for interrupt in getattr(task, "interrupts", ())
+    ]
+    if pending:
+        return RunStep(
+            thread_id=thread_id,
+            status="paused",
+            approval=Approval(**pending[0].value),
+            steps=state.steps,
+            tool_log=state.tool_log,
+            turns=state.turns,
+            usage=state.usage,
+        )
+
+    return RunStep(
+        thread_id=thread_id,
+        status="done",
+        final=state.final,
+        steps=state.steps,
+        tool_log=state.tool_log,
+        turns=state.turns,
+        usage=state.usage,
+    )
+
+
+def start_streaming(instruction: str) -> Iterator[Progress | RunStep]:
+    return _advance_streaming(uuid4().hex, AgentState(user_input=instruction))
+
+
+def resume_streaming(thread_id: str, decision: bool | str) -> Iterator[Progress | RunStep]:
+    return _advance_streaming(thread_id, Command(resume=decision))
 
 
 def start(instruction: str) -> RunStep:

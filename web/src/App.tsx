@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import {
   getConfig,
   getTasks,
-  sendDecision,
-  startRun,
+  sendDecisionStreaming,
+  startRunStreaming,
   type Config,
   type Decision,
+  type Progress,
   type Proposal,
   type RunStep,
   type Task,
@@ -218,6 +219,7 @@ export default function App() {
   const [step, setStep] = useState<RunStep | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<Progress[]>([]);
 
   // Re-read after every edit rather than mutating local state: the server owns
   // the ids and the persisted order, and one round trip is cheap.
@@ -234,11 +236,12 @@ export default function App() {
     refreshTasks();
   }, []);
 
-  async function guard(work: () => Promise<RunStep>) {
+  async function guard(work: (onProgress: (step: Progress) => void) => Promise<RunStep>) {
     setBusy(true);
     setError(null);
+    setProgress([]);
     try {
-      setStep(await work());
+      setStep(await work((update) => setProgress((seen) => [...seen, update])));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -279,7 +282,8 @@ export default function App() {
             className="card"
             onSubmit={(event) => {
               event.preventDefault();
-              if (instruction.trim()) guard(() => startRun(instruction.trim()));
+              if (instruction.trim())
+                guard((onProgress) => startRunStreaming(instruction.trim(), onProgress));
             }}
           >
             <label htmlFor="instruction">What should it do?</label>
@@ -308,7 +312,21 @@ export default function App() {
             </button>
           </form>
 
-          {busy && <p className="muted">Thinking. Model calls take a few seconds each.</p>}
+          {progress.length > 0 && (
+            <ol className={busy ? "card progress running" : "card progress"}>
+              {progress.map((update, index) => (
+                <li key={index}>
+                  <span className="progress-label">{update.label}</span>
+                  {update.tools.length > 0 && <code>{update.tools.join(", ")}</code>}
+                </li>
+              ))}
+              {busy && (
+                <li className="pending">
+                  <span className="progress-label">Working...</span>
+                </li>
+              )}
+            </ol>
+          )}
 
           {error && <p className="card error">{error}</p>}
 
@@ -318,7 +336,9 @@ export default function App() {
                 key={index}
                 proposal={proposal}
                 busy={busy}
-                onDecide={(decision) => guard(() => sendDecision(step.thread_id, decision))}
+                onDecide={(decision) =>
+                  guard((onProgress) => sendDecisionStreaming(step.thread_id, decision, onProgress))
+                }
               />
             ))}
 

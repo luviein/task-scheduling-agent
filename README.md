@@ -325,6 +325,29 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### Streaming the run
+
+A run is ten to twenty seconds of model calls. Returning only at the end left the
+page blank for all of it, so the graph is also driven with `stream`, and each
+node is reported as it completes.
+
+```
+  3.3s  Thinking
+  3.3s  Checking whether this needs your approval
+  3.3s  Running tools  [search_tasks]
+  6.8s  Thinking
+  7.2s  Running tools  [find_free_slots]
+ 13.3s  RESULT status=paused
+```
+
+Server-sent events over POST rather than a GET an `EventSource` could consume,
+because the instruction is the user's own words and has no business in a URL,
+where it lands in access logs and browser history.
+
+The blocking routes are still there and still tested. Streaming is a second way
+to drive the same graph, not a replacement, and both end in the identical
+`RunStep`.
+
 ### What a run costs
 
 Tool Efficiency counts tool calls because calls cost money, but it was only ever
