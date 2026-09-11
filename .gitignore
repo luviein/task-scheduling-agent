@@ -7,3 +7,7 @@ __pycache__/
 # Google Calendar OAuth: never commit these
 credentials.json
 token.json
+
+# Web client
+web/node_modules/
+web/dist/

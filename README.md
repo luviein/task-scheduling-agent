@@ -312,6 +312,24 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### Running the web UI
+
+Two processes. The API on 8000, the client on 5173, which proxies `/api` to the
+first so both look like one origin.
+
+```bash
+# terminal 1
+.venv/Scripts/python.exe -m uvicorn api:app --reload --port 8000
+
+# terminal 2
+cd web && npm install && npm run dev
+```
+
+Open http://localhost:5173. The approval card shows the proposed slot, what else
+is on that day, and the other free starts. Clicking one of those sends it back as
+a counter-proposal rather than booking it directly, so the agent re-checks
+availability instead of being overridden.
+
 ### Running against a real calendar
 
 Optional. The mock is the default and needs none of this.
@@ -347,6 +365,8 @@ repeats about weekly until the app is published.
 | `mock_data.py` | Fake task list and calendar, frozen clock, state reset |
 | `eval_cases.py` | The eval set and its written expectations |
 | `session.py` | start/resume wrapper so a server can drive the approval pause |
+| `api.py` | FastAPI routes over that wrapper |
+| `web/` | Vite and React client, typed against the API |
 | `eval_run.py` | Executes cases, saves traces |
 | `eval_metrics.py` | Four rule-based metrics, one LLM-judged |
 | `eval_score.py` | Scores saved traces, writes the report |
