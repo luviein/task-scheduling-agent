@@ -11,3 +11,4 @@ token.json
 # Web client
 web/node_modules/
 web/dist/
+tasks.json

@@ -13,7 +13,7 @@ from typing import Any, Callable, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from calendar_backend import CalendarEvent, get_backend, overlaps
-from mock_data import TASKS
+from task_store import as_dicts
 
 
 # --- Tool 1: search_tasks ---------------------------------------------------
@@ -41,7 +41,7 @@ def search_tasks(args: SearchTasksInput) -> SearchTasksOutput:
     needle = args.query.strip().lower()
     hits = [
         Task(**t)
-        for t in TASKS
+        for t in as_dicts()
         if (args.status == "all" or t["status"] == args.status)
         and (not needle or needle in t["title"].lower() or any(needle in tag for tag in t["tags"]))
     ]

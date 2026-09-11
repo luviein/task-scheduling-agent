@@ -163,25 +163,123 @@ p {
   gap: 6px;
 }
 
-.tasks li {
+.tasks .task {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   font-size: 0.9rem;
 }
 
-.tasks li.done {
-  opacity: 0.5;
+.tasks .task.done .task-title {
+  opacity: 0.55;
   text-decoration: line-through;
 }
 
-.meta {
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.task-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.task-check input {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.task-title {
+  flex: 1;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pill {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pill.high {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.pill.medium {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.task-actions {
+  display: flex;
+  gap: 10px;
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+button.link:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+button.link.danger {
+  color: var(--danger);
+}
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-form select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.task-form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.task-form-actions button {
+  padding: 5px 11px;
+  font-size: 0.82rem;
 }
 
 label {

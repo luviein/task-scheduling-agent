@@ -15,6 +15,7 @@ from agent import MODEL, run
 from calendar_backend import MockCalendar, use_backend
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
+from task_store import reset_tasks
 
 # The suite is pinned to the mock, whatever CALENDAR_BACKEND says. Scoring a run
 # against a real calendar would create real events, defeat reset_calendar(), and
@@ -26,8 +27,10 @@ TRACE_FILE = RUNS_DIR / "traces.json"
 
 
 def run_case(case) -> dict:
-    # Every case starts from the same calendar, or results depend on run order.
+    # Every case starts from the same calendar and the same task list, or results
+    # depend on run order and on whatever the UI was last used to edit.
     reset_calendar()
+    reset_tasks()
     started = time.perf_counter()
 
     # Scripted answers, consumed one per pause. Cases that say nothing get the

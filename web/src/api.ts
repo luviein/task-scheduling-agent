@@ -8,13 +8,22 @@ export type Config = {
   business_hours: string;
 };
 
+export type Status = "open" | "done";
+export type Priority = "low" | "medium" | "high";
+
 export type Task = {
   id: string;
   title: string;
-  status: string;
-  priority: string;
+  status: Status;
+  priority: Priority;
   tags: string[];
 };
+
+// Creating sends the whole task minus the id, which the server assigns.
+export type TaskDraft = Omit<Task, "id">;
+
+// Patching sends only the fields that changed, so an omitted field keeps its value.
+export type TaskPatch = Partial<TaskDraft>;
 
 export type BookedSlot = { title: string; from: string; to: string };
 
@@ -77,6 +86,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getConfig = () => request<Config>("/api/config");
 
 export const getTasks = () => request<Task[]>("/api/tasks");
+
+export const createTask = (draft: TaskDraft) =>
+  request<Task>("/api/tasks", { method: "POST", body: JSON.stringify(draft) });
+
+export const patchTask = (id: string, patch: TaskPatch) =>
+  request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+
+export const removeTask = async (id: string) => {
+  const response = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+  // 204 has no body, so this one cannot go through request().
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+};
 
 export const startRun = (instruction: string) =>
   request<RunStep>("/api/runs", {

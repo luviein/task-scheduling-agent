@@ -16,14 +16,22 @@ model calls, and FastAPI runs sync routes in a threadpool, so one slow run does
 not freeze the server.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agent import BUSINESS_END, BUSINESS_START, MODEL, DailyQuotaExhausted
 from calendar_backend import get_backend
-from mock_data import TASKS
 from session import RunStep, resume, start
+from task_store import (
+    Task,
+    TaskDraft,
+    TaskPatch,
+    create_task,
+    delete_task,
+    list_tasks,
+    update_task,
+)
 
 app = FastAPI(title="Task Scheduling Agent", version="1.0")
 
@@ -69,10 +77,34 @@ def config() -> Config:
     )
 
 
+# --- Tasks ------------------------------------------------------------------
+# The list the agent searches, editable from the UI. Edits persist to tasks.json;
+# the eval suite reseeds in memory and never reads that file.
+
+
 @app.get("/api/tasks")
-def tasks() -> list[dict]:
-    """The task list the agent searches. Read-only; the UI shows it as context."""
-    return TASKS
+def tasks() -> list[Task]:
+    return list_tasks()
+
+
+@app.post("/api/tasks", status_code=201)
+def add_task(draft: TaskDraft) -> Task:
+    return create_task(draft)
+
+
+@app.patch("/api/tasks/{task_id}")
+def edit_task(task_id: str, patch: TaskPatch) -> Task:
+    task = update_task(task_id, patch)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"No task {task_id}")
+    return task
+
+
+@app.delete("/api/tasks/{task_id}", status_code=204)
+def remove_task(task_id: str) -> Response:
+    if not delete_task(task_id):
+        raise HTTPException(status_code=404, detail=f"No task {task_id}")
+    return Response(status_code=204)
 
 
 def _guard(fn, *args) -> RunStep:

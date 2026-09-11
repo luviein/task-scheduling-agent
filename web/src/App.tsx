@@ -10,6 +10,7 @@ import {
   type RunStep,
   type Task,
 } from "./api";
+import TaskPanel from "./TaskPanel";
 
 const EXAMPLES = [
   "Book an hour tomorrow morning for the Playwright login suite refactor.",
@@ -191,13 +192,19 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Re-read after every edit rather than mutating local state: the server owns
+  // the ids and the persisted order, and one round trip is cheap.
+  const refreshTasks = () => {
+    getTasks()
+      .then(setTasks)
+      .catch(() => undefined);
+  };
+
   useEffect(() => {
     getConfig()
       .then(setConfig)
       .catch((e) => setError(e.message));
-    getTasks()
-      .then(setTasks)
-      .catch(() => undefined);
+    refreshTasks();
   }, []);
 
   async function guard(work: () => Promise<RunStep>) {
@@ -238,19 +245,7 @@ export default function App() {
       {live && <p className="banner">Approvals write real events to your Google Calendar.</p>}
 
       <div className="columns">
-        <aside>
-          <h2>Tasks</h2>
-          <ul className="tasks">
-            {tasks.map((task) => (
-              <li key={task.id} className={task.status}>
-                <span>{task.title}</span>
-                <span className="meta">
-                  {task.priority} - {task.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </aside>
+        <TaskPanel tasks={tasks} onChanged={refreshTasks} />
 
         <main>
           <form

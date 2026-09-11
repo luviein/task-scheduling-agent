@@ -204,6 +204,19 @@ backend at import regardless of configuration. Scoring against a live calendar
 would create real events, defeat `reset_calendar()`, and make every score depend
 on that week's meetings.
 
+### Editable tasks, frozen expectations
+
+The task list is editable from the UI and persists to `tasks.json`. The eval
+suite does not read it. `mock_data.TASKS` stays the seed, `reset_tasks()` runs
+per case alongside `reset_calendar()`, and the hallucination check grounds
+against the seed titles rather than the live list.
+
+Without that split, adding a task through the UI would quietly change what
+"invented a task title" means, and a suite that scored 1.00 yesterday would
+score differently today for reasons nothing recorded. Same reasoning as pinning
+the evals to the mock calendar: anything a human can edit between runs cannot
+also be the yardstick.
+
 ### The gate held and the report lied
 
 Every eval case auto-approved, so writes always succeeded and the agent's claim
@@ -362,7 +375,8 @@ repeats about weekly until the app is published.
 | `tools.py` | Three tools, their Pydantic schemas, and the validating dispatcher |
 | `calendar_backend.py` | The calendar interface, the mock implementation, backend selection |
 | `google_calendar.py` | Google Calendar over OAuth, imported only when selected |
-| `mock_data.py` | Fake task list and calendar, frozen clock, state reset |
+| `mock_data.py` | Seed task list and calendar, frozen clock, state reset |
+| `task_store.py` | The editable task list, persisted to tasks.json, reseedable for evals |
 | `eval_cases.py` | The eval set and its written expectations |
 | `session.py` | start/resume wrapper so a server can drive the approval pause |
 | `api.py` | FastAPI routes over that wrapper |

@@ -16,10 +16,12 @@ from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 from google.genai import types
 
 from agent import MODEL, call_model
-from mock_data import TASKS
+from mock_data import TASKS as SEED_TASKS
 
 SEEDED_EVENT_TITLES = {"Standup", "Design review"}
-REAL_TASK_TITLES = {task["title"] for task in TASKS}
+# The seed, deliberately: a run is scored against the list it ran against, not
+# against whatever the UI has since been used to add or rename.
+REAL_TASK_TITLES = {task["title"] for task in SEED_TASKS}
 
 
 # --- Judge model ------------------------------------------------------------
