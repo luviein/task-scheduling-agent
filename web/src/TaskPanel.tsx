@@ -3,6 +3,7 @@ import {
   createTask,
   patchTask,
   removeTask,
+  resyncTasks,
   type Booking,
   type Priority,
   type Status,
@@ -204,6 +205,27 @@ export default function TaskPanel({
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function refresh() {
+    setSyncing(true);
+    setError(null);
+    setNote(null);
+    try {
+      const result = await resyncTasks();
+      setNote(
+        result.cleared.length === 0
+          ? "Everything matches the calendar."
+          : `${result.cleared.length} booking${result.cleared.length === 1 ? "" : "s"} no longer on the calendar, reopened.`,
+      );
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function add(draft: TaskDraft) {
     setBusy(true);
@@ -223,17 +245,23 @@ export default function TaskPanel({
     <aside>
       <div className="panel-head">
         <h2>Tasks</h2>
-        {!adding && (
-          <button className="link" onClick={() => setAdding(true)}>
-            Add
+        <div className="panel-actions">
+          <button className="link" disabled={syncing} onClick={refresh}>
+            {syncing ? "Checking..." : "Refresh"}
           </button>
-        )}
+          {!adding && (
+            <button className="link" onClick={() => setAdding(true)}>
+              Add
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="muted small">
-        The list the agent searches. Edits are saved and survive a restart.
+        The list the agent searches. Refresh checks ticked-off tasks against the calendar.
       </p>
 
+      {note && <p className="sync-note">{note}</p>}
       {error && <p className="card error small">{error}</p>}
 
       <ul className="tasks">

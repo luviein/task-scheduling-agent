@@ -374,7 +374,13 @@ def act(state: AgentState) -> dict:
         booked = True
         # The calendar is the source of truth for what was booked, so the task
         # list follows it rather than the other way round.
-        mark_booked(event["title"], event["date"], event["start_time"], event["duration_minutes"])
+        mark_booked(
+            event["title"],
+            event["date"],
+            event["start_time"],
+            event["duration_minutes"],
+            event.get("id"),
+        )
 
     return {
         "contents": [*state.contents, types.Content(role="user", parts=parts)],

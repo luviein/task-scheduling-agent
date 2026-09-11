@@ -10,6 +10,7 @@ against the seed, in memory, without touching the file.
 """
 
 import json
+from datetime import date as DateType
 from pathlib import Path
 from typing import Literal
 
@@ -31,6 +32,9 @@ class Booking(BaseModel):
     date: str
     start_time: str
     duration_minutes: int
+    event_id: str | None = Field(
+        default=None, description="The calendar's own id, so a resync can match exactly."
+    )
 
 
 class Task(BaseModel):
@@ -158,7 +162,9 @@ def update_task(task_id: str, patch: TaskPatch) -> Task | None:
     return task
 
 
-def mark_booked(title: str, date: str, start_time: str, duration_minutes: int) -> Task | None:
+def mark_booked(
+    title: str, date: str, start_time: str, duration_minutes: int, event_id: str | None = None
+) -> Task | None:
     """Record that a task got time on the calendar, and tick it off.
 
     Called only after `create_calendar_event` actually returned created=true, so
@@ -169,10 +175,63 @@ def mark_booked(title: str, date: str, start_time: str, duration_minutes: int) -
     task = next((task for task in _load() if task.title == title), None)
     if task is None:
         return None
-    task.booked = Booking(date=date, start_time=start_time, duration_minutes=duration_minutes)
+    task.booked = Booking(
+        date=date, start_time=start_time, duration_minutes=duration_minutes, event_id=event_id
+    )
     task.status = "done"
     _save()
     return task
+
+
+def resync_bookings() -> list[str]:
+    """Drop bookings whose calendar event is gone, and untick those tasks.
+
+    The calendar is the source of truth, and it can change behind this app's
+    back: you delete the event in Google Calendar and the task is left claiming
+    time it no longer holds. This reconciles in that direction only. It never
+    creates or moves an event, so the worst it can do is tell the truth.
+
+    Matches on the calendar's own event id where there is one, and falls back to
+    title and start time for bookings recorded before ids were stored.
+    """
+    from calendar_backend import get_backend
+
+    booked = [task for task in _load() if task.booked]
+    if not booked:
+        return []
+
+    backend = get_backend()
+    # One listing per distinct day, not one per task.
+    days = {task.booked.date for task in booked}
+    events_by_day = {}
+    for day in days:
+        try:
+            events_by_day[day] = backend.list_events(DateType.fromisoformat(day))
+        except (ValueError, OSError):
+            # A day we cannot read is a day we cannot judge. Leave those tasks be
+            # rather than unticking on the strength of a failed lookup.
+            events_by_day[day] = None
+
+    cleared = []
+    for task in booked:
+        events = events_by_day.get(task.booked.date)
+        if events is None:
+            continue
+        if task.booked.event_id:
+            still_there = any(event.id == task.booked.event_id for event in events)
+        else:
+            still_there = any(
+                event.title == task.title and event.start_time == task.booked.start_time
+                for event in events
+            )
+        if not still_there:
+            task.booked = None
+            task.status = "open"
+            cleared.append(task.id)
+
+    if cleared:
+        _save()
+    return cleared
 
 
 def delete_task(task_id: str) -> bool:

@@ -30,6 +30,7 @@ from task_store import (
     create_task,
     delete_task,
     list_tasks,
+    resync_bookings,
     update_task,
 )
 
@@ -85,6 +86,24 @@ def config() -> Config:
 @app.get("/api/tasks")
 def tasks() -> list[Task]:
     return list_tasks()
+
+
+class Resync(BaseModel):
+    """What the refresh changed, so the UI can say something specific."""
+
+    cleared: list[str] = Field(
+        description="Ids of tasks whose calendar event is gone. They are open again."
+    )
+    tasks: list[Task]
+
+
+@app.post("/api/tasks/resync")
+def resync() -> Resync:
+    """Reconcile ticked-off tasks against the calendar.
+
+    Declared before the /{task_id} routes so "resync" is never read as an id.
+    """
+    return Resync(cleared=resync_bookings(), tasks=list_tasks())
 
 
 @app.post("/api/tasks", status_code=201)

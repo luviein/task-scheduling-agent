@@ -187,6 +187,17 @@ p {
   justify-content: space-between;
 }
 
+.panel-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sync-note {
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
 .small {
   font-size: 0.8rem;
 }

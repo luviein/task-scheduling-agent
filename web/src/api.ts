@@ -104,6 +104,12 @@ export const getConfig = () => request<Config>("/api/config");
 
 export const getTasks = () => request<Task[]>("/api/tasks");
 
+export type Resync = { cleared: string[]; tasks: Task[] };
+
+// Reconciles ticked-off tasks against the calendar. Only ever clears a booking
+// whose event has gone; it never creates or moves anything.
+export const resyncTasks = () => request<Resync>("/api/tasks/resync", { method: "POST" });
+
 export const createTask = (draft: TaskDraft) =>
   request<Task>("/api/tasks", { method: "POST", body: JSON.stringify(draft) });
 
