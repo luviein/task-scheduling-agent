@@ -12,7 +12,8 @@ from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from mock_data import CALENDAR, TASKS
+from calendar_backend import CalendarEvent, get_backend, overlaps
+from mock_data import TASKS
 
 
 # --- Tool 1: search_tasks ---------------------------------------------------
@@ -57,57 +58,32 @@ class CreateCalendarEventInput(BaseModel):
     duration_minutes: int = Field(ge=5, le=480, description="Length of the event in minutes.")
 
 
-class CalendarEvent(BaseModel):
-    id: str
-    title: str
-    date: str
-    start_time: str
-    duration_minutes: int
-
-
 class CreateCalendarEventOutput(BaseModel):
     created: bool
     event: CalendarEvent | None = None
     conflict_with: str | None = Field(default=None, description="Title of the clashing event, if any.")
 
 
-def _span(day: str, start: str, minutes: int) -> tuple[datetime, datetime]:
-    begin = datetime.fromisoformat(f"{day}T{start}")
-    return begin, begin + timedelta(minutes=minutes)
-
-
 def create_calendar_event(args: CreateCalendarEventInput) -> CreateCalendarEventOutput:
-    day = args.date.isoformat()
-    start = args.start_time.strftime("%H:%M")
-    new_start, new_end = _span(day, start, args.duration_minutes)
+    """Refuse to double-book, then delegate the write to the active backend.
 
-    for booked in CALENDAR:
-        if booked["date"] != day:
-            continue
-        old_start, old_end = _span(booked["date"], booked["start_time"], booked["duration_minutes"])
-        if new_start < old_end and old_start < new_end:
-            # Refuse instead of double-booking. Step 3 lets the agent retry another slot.
-            return CreateCalendarEventOutput(created=False, conflict_with=booked["title"])
+    The conflict check lives here rather than in a backend because it is the
+    agent's rule, not the calendar's: Google would accept an overlapping event
+    without complaint. Step 3 lets the agent retry another slot.
+    """
+    cal = get_backend()
+    begin = datetime.combine(args.date, args.start_time)
+    block = (begin, begin + timedelta(minutes=args.duration_minutes))
 
-    event = CalendarEvent(
-        id=f"E-{len(CALENDAR) + 1}",
-        title=args.title,
-        date=day,
-        start_time=start,
-        duration_minutes=args.duration_minutes,
-    )
-    CALENDAR.append(event.model_dump())
+    for booked in cal.list_events(args.date):
+        if overlaps(block, booked.span()):
+            return CreateCalendarEventOutput(created=False, conflict_with=booked.title)
+
+    event = cal.create_event(args.title, args.date, args.start_time, args.duration_minutes)
     return CreateCalendarEventOutput(created=True, event=event)
 
 
 # --- Tool 3: find_free_slots ------------------------------------------------
-# One source of truth. The system prompt imports these rather than restating them,
-# so the rule the agent is told and the rule the tool enforces cannot drift apart.
-BUSINESS_START = TimeType(9, 0)
-BUSINESS_END = TimeType(18, 0)
-SLOT_GRID_MINUTES = 30
-
-
 class FindFreeSlotsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -122,25 +98,8 @@ class FindFreeSlotsOutput(BaseModel):
 
 def find_free_slots(args: FindFreeSlotsInput) -> FindFreeSlotsOutput:
     """Compute availability instead of making the model guess at it."""
-    day = args.date.isoformat()
-    busy = [
-        _span(event["date"], event["start_time"], event["duration_minutes"])
-        for event in CALENDAR
-        if event["date"] == day
-    ]
-
-    opens = datetime.combine(args.date, BUSINESS_START)
-    closes = datetime.combine(args.date, BUSINESS_END)
-
-    free = []
-    start = opens
-    while start + timedelta(minutes=args.duration_minutes) <= closes:
-        end = start + timedelta(minutes=args.duration_minutes)
-        if not any(start < busy_end and busy_start < end for busy_start, busy_end in busy):
-            free.append(start.strftime("%H:%M"))
-        start += timedelta(minutes=SLOT_GRID_MINUTES)
-
-    return FindFreeSlotsOutput(slots=free, count=len(free))
+    slots = get_backend().find_free_slots(args.date, args.duration_minutes)
+    return FindFreeSlotsOutput(slots=slots, count=len(slots))
 
 
 def day_agenda(day: str) -> list[dict]:
@@ -149,13 +108,11 @@ def day_agenda(day: str) -> list[dict]:
     Not a tool. The approval prompt uses it to show a human why a slot was
     chosen, which is a question the proposal alone cannot answer.
     """
-    events = []
-    for event in CALENDAR:
-        if event["date"] != day:
-            continue
-        start, end = _span(event["date"], event["start_time"], event["duration_minutes"])
-        events.append({"title": event["title"], "from": start.strftime("%H:%M"), "to": end.strftime("%H:%M")})
-    return sorted(events, key=lambda event: event["from"])
+    agenda = []
+    for event in get_backend().list_events(DateType.fromisoformat(day)):
+        start, end = event.span()
+        agenda.append({"title": event.title, "from": start.strftime("%H:%M"), "to": end.strftime("%H:%M")})
+    return agenda
 
 
 # --- Registry ---------------------------------------------------------------

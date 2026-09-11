@@ -12,8 +12,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent import MODEL, approve_everything, run
+from calendar_backend import MockCalendar, use_backend
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
+
+# The suite is pinned to the mock, whatever CALENDAR_BACKEND says. Scoring a run
+# against a real calendar would create real events, defeat reset_calendar(), and
+# make every score depend on that week's meetings.
+use_backend(MockCalendar())
 
 RUNS_DIR = Path("runs")
 TRACE_FILE = RUNS_DIR / "traces.json"
