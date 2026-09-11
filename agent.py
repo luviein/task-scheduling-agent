@@ -23,8 +23,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, ConfigDict, Field
 
-from calendar_backend import BUSINESS_END, BUSINESS_START
-from mock_data import TODAY
+from calendar_backend import BUSINESS_END, BUSINESS_START, get_backend
 from tools import ToolCallResult, anthropic_tool_defs, day_agenda, dispatch
 
 load_dotenv()
@@ -46,7 +45,7 @@ WRITE_TOOLS = {"create_calendar_event"}
 # agent must stop and explain itself instead of proposing again.
 MAX_REVISIONS = 2
 
-SYSTEM = f"""You are a productivity agent. Today is {TODAY.isoformat()}.
+SYSTEM_TEMPLATE = """You are a productivity agent. Today is {today}.
 
 Rules:
 - Look up real data with search_tasks before you schedule anything.
@@ -59,12 +58,21 @@ Rules:
 - If no task matches what the user asked for, book nothing. Say the task does not
   exist and list what you could not do in `unresolved`. Do not invent a task to book.
 - Before booking, call find_free_slots to see what is actually available. Never guess a time.
-- Book the earliest slot it returns that suits the request. Business hours are {BUSINESS_START:%H:%M} to {BUSINESS_END:%H:%M}.
+- Book the earliest slot it returns that suits the request. Business hours are {opens} to {closes}.
 - If a booking still returns created=false, pick the next free slot and try again.
 - Nothing can be booked outside business hours. If the user asks for a time outside
   them, do not keep proposing alternatives: say plainly that the time is outside
   business hours and what the range is.
 - When every part of the request is handled, stop calling tools and give a short summary."""
+
+
+def system_prompt() -> str:
+    """Built per run, not at import: the date comes from whichever calendar is active."""
+    return SYSTEM_TEMPLATE.format(
+        today=get_backend().today().isoformat(),
+        opens=BUSINESS_START.strftime("%H:%M"),
+        closes=BUSINESS_END.strftime("%H:%M"),
+    )
 
 
 # --- Structured final output ------------------------------------------------
@@ -207,7 +215,7 @@ def reason(state: AgentState) -> dict:
         model=MODEL,
         contents=contents,
         config=types.GenerateContentConfig(
-            system_instruction=SYSTEM,
+            system_instruction=system_prompt(),
             tools=gemini_tools(),
             # We drive the loop through LangGraph, so the SDK must not call tools itself.
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
@@ -327,7 +335,7 @@ def summarize(state: AgentState) -> dict:
         model=MODEL,
         contents=[*state.contents, closing],
         config=types.GenerateContentConfig(
-            system_instruction=SYSTEM,
+            system_instruction=system_prompt(),
             response_mime_type="application/json",
             response_schema=FinalAnswer,
         ),

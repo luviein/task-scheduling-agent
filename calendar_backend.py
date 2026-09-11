@@ -52,6 +52,15 @@ class CalendarBackend(ABC):
 
     name: str
 
+    def today(self) -> DateType:
+        """What the agent should treat as today.
+
+        A property of the calendar, not of the agent: the mock's clock is frozen
+        so evals stay deterministic, while a real calendar's today is real, in
+        that calendar's own timezone.
+        """
+        return DateType.today()
+
     @abstractmethod
     def list_events(self, day: DateType) -> list[CalendarEvent]:
         """Every event on that day, earliest first."""
@@ -87,6 +96,9 @@ class MockCalendar(CalendarBackend):
     """
 
     name = "mock"
+
+    def today(self) -> DateType:
+        return mock_data.TODAY
 
     def list_events(self, day: DateType) -> list[CalendarEvent]:
         stamp = day.isoformat()

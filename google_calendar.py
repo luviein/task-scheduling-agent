@@ -74,6 +74,9 @@ class GoogleCalendar(CalendarBackend):
             self._zone = ZoneInfo(probe["timeZone"])
         return self._zone
 
+    def today(self) -> DateType:
+        return datetime.now(self.zone).date()
+
     def list_events(self, day: DateType) -> list[CalendarEvent]:
         opens = datetime.combine(day, TimeType.min, tzinfo=self.zone)
         closes = opens + timedelta(days=1)
