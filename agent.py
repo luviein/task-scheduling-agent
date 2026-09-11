@@ -25,6 +25,7 @@ from langgraph.types import Command, interrupt
 from pydantic import BaseModel, ConfigDict, Field
 
 from calendar_backend import BUSINESS_END, BUSINESS_START, get_backend, overlaps
+from task_store import mark_booked
 from tools import ToolCallResult, anthropic_tool_defs, day_agenda, dispatch
 
 load_dotenv()
@@ -363,10 +364,17 @@ def act(state: AgentState) -> dict:
         # Parallel calls go back in ONE turn, in the order they were requested.
         parts.append(types.Part.from_function_response(name=call.name, response=result.model_dump(mode="json")))
 
-    booked = any(
-        result.tool == "create_calendar_event" and result.ok and (result.output or {}).get("created")
-        for result in results
-    )
+    booked = False
+    for result in results:
+        if result.tool != "create_calendar_event" or not result.ok:
+            continue
+        event = (result.output or {}).get("event")
+        if not (result.output or {}).get("created") or not event:
+            continue
+        booked = True
+        # The calendar is the source of truth for what was booked, so the task
+        # list follows it rather than the other way round.
+        mark_booked(event["title"], event["date"], event["start_time"], event["duration_minutes"])
 
     return {
         "contents": [*state.contents, types.Content(role="user", parts=parts)],

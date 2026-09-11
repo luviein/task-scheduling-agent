@@ -3,6 +3,7 @@ import {
   createTask,
   patchTask,
   removeTask,
+  type Booking,
   type Priority,
   type Status,
   type Task,
@@ -12,6 +13,15 @@ import {
 const PRIORITIES: Priority[] = ["low", "medium", "high"];
 
 const EMPTY: TaskDraft = { title: "", status: "open", priority: "medium", tags: [] };
+
+/** "Booked Sat 12 Sep, 15:30 for 25 min" — short enough to sit under the title. */
+function bookedLabel(booked: Booking): string {
+  const when = new Date(`${booked.date}T${booked.start_time}`);
+  const day = Number.isNaN(when.valueOf())
+    ? booked.date
+    : when.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return `Booked ${day}, ${booked.start_time} for ${booked.duration_minutes} min`;
+}
 
 /** One form, used both for adding a task and for editing an existing one. */
 function TaskForm({
@@ -145,6 +155,8 @@ function TaskRow({
         />
         <span className="task-title">{task.title}</span>
       </label>
+
+      {task.booked && <p className="booked-note">{bookedLabel(task.booked)}</p>}
 
       <div className="task-meta">
         <span className={`pill ${task.priority}`}>{task.priority}</span>

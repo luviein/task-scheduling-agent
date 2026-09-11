@@ -211,6 +211,12 @@ p {
   flex: 1;
 }
 
+.booked-note {
+  margin: 0 0 0 22px;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
 .task-meta {
   display: flex;
   flex-wrap: wrap;

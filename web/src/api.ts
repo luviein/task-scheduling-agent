@@ -11,16 +11,25 @@ export type Config = {
 export type Status = "open" | "done";
 export type Priority = "low" | "medium" | "high";
 
+// Where a task ended up on the calendar. Written by the agent, never by the form.
+export type Booking = {
+  date: string;
+  start_time: string;
+  duration_minutes: number;
+};
+
 export type Task = {
   id: string;
   title: string;
   status: Status;
   priority: Priority;
   tags: string[];
+  booked: Booking | null;
 };
 
-// Creating sends the whole task minus the id, which the server assigns.
-export type TaskDraft = Omit<Task, "id">;
+// Creating sends the editable fields only. The server assigns the id, and the
+// agent owns `booked`.
+export type TaskDraft = Omit<Task, "id" | "booked">;
 
 // Patching sends only the fields that changed, so an omitted field keeps its value.
 export type TaskPatch = Partial<TaskDraft>;

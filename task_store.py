@@ -23,6 +23,16 @@ Status = Literal["open", "done"]
 Priority = Literal["low", "medium", "high"]
 
 
+class Booking(BaseModel):
+    """Where a task ended up on the calendar. Written by the agent, not by hand."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    date: str
+    start_time: str
+    duration_minutes: int
+
+
 class Task(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -31,6 +41,9 @@ class Task(BaseModel):
     status: Status = "open"
     priority: Priority = "medium"
     tags: list[str] = Field(default_factory=list)
+    booked: Booking | None = Field(
+        default=None, description="Set when a booking for this task actually succeeded."
+    )
 
 
 class TaskDraft(BaseModel):
@@ -57,6 +70,18 @@ class TaskPatch(BaseModel):
 
 _tasks: list[Task] | None = None
 
+# Evals mutate the list: a successful booking ticks its task off. They must not
+# write that to the file a human edits, or a suite run would silently replace
+# your task list with the seed. Same shape as pinning the evals to the mock
+# calendar: the harness says so once, at import.
+_persist = True
+
+
+def disable_persistence() -> None:
+    """Keep every later change in memory only. Called by the eval harness."""
+    global _persist
+    _persist = False
+
 
 def _seed() -> list[Task]:
     return [Task(**task) for task in SEED_TASKS]
@@ -79,6 +104,8 @@ def _load() -> list[Task]:
 
 
 def _save() -> None:
+    if not _persist:
+        return
     STORE_FILE.write_text(
         json.dumps([task.model_dump() for task in _load()], indent=2), encoding="utf-8"
     )
@@ -127,6 +154,23 @@ def update_task(task_id: str, patch: TaskPatch) -> Task | None:
     # a field the caller never mentioned must keep its current value.
     for field, value in patch.model_dump(exclude_unset=True).items():
         setattr(task, field, value)
+    _save()
+    return task
+
+
+def mark_booked(title: str, date: str, start_time: str, duration_minutes: int) -> Task | None:
+    """Record that a task got time on the calendar, and tick it off.
+
+    Called only after `create_calendar_event` actually returned created=true, so
+    the tick means an event exists, not that the agent intended one. Booking is
+    not the same as finishing the work, which is why the time is stored rather
+    than just flipping a flag: the list can say when, not merely that.
+    """
+    task = next((task for task in _load() if task.title == title), None)
+    if task is None:
+        return None
+    task.booked = Booking(date=date, start_time=start_time, duration_minutes=duration_minutes)
+    task.status = "done"
     _save()
     return task
 

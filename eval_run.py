@@ -15,12 +15,16 @@ from agent import MODEL, run
 from calendar_backend import MockCalendar, use_backend
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
-from task_store import reset_tasks
+from task_store import disable_persistence, reset_tasks
 
 # The suite is pinned to the mock, whatever CALENDAR_BACKEND says. Scoring a run
 # against a real calendar would create real events, defeat reset_calendar(), and
 # make every score depend on that week's meetings.
 use_backend(MockCalendar())
+
+# A booking ticks its task off, and the suite books plenty. Keep that in memory:
+# tasks.json belongs to whoever is using the UI.
+disable_persistence()
 
 RUNS_DIR = Path("runs")
 TRACE_FILE = RUNS_DIR / "traces.json"
