@@ -78,8 +78,12 @@ class GoogleCalendar(CalendarBackend):
         return datetime.now(self.zone).date()
 
     def list_events(self, day: DateType) -> list[CalendarEvent]:
-        opens = datetime.combine(day, TimeType.min, tzinfo=self.zone)
-        closes = opens + timedelta(days=1)
+        return self.list_range(day, day)
+
+    def list_range(self, start: DateType, end: DateType) -> list[CalendarEvent]:
+        """A whole span in one request, rather than the base class's day at a time."""
+        opens = datetime.combine(start, TimeType.min, tzinfo=self.zone)
+        closes = datetime.combine(end, TimeType.min, tzinfo=self.zone) + timedelta(days=1)
 
         response = (
             self._service.events()
@@ -91,7 +95,7 @@ class GoogleCalendar(CalendarBackend):
                 # what a day view needs; without it you get the rule, not the events.
                 singleEvents=True,
                 orderBy="startTime",
-                maxResults=250,
+                maxResults=2500,
             )
             .execute()
         )
@@ -103,14 +107,14 @@ class GoogleCalendar(CalendarBackend):
             if "dateTime" not in item.get("start", {}):
                 continue
             begin = datetime.fromisoformat(item["start"]["dateTime"]).astimezone(self.zone)
-            end = datetime.fromisoformat(item["end"]["dateTime"]).astimezone(self.zone)
+            finish = datetime.fromisoformat(item["end"]["dateTime"]).astimezone(self.zone)
             events.append(
                 CalendarEvent(
                     id=item["id"],
                     title=item.get("summary", "(no title)"),
                     date=begin.date().isoformat(),
                     start_time=begin.strftime("%H:%M"),
-                    duration_minutes=int((end - begin).total_seconds() // 60),
+                    duration_minutes=int((finish - begin).total_seconds() // 60),
                 )
             )
         return events

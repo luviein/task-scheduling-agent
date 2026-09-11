@@ -10,7 +10,7 @@ against the seed, in memory, without touching the file.
 """
 
 import json
-from datetime import date as DateType
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -183,55 +183,85 @@ def mark_booked(
     return task
 
 
-def resync_bookings() -> list[str]:
-    """Drop bookings whose calendar event is gone, and untick those tasks.
+# How far ahead a refresh looks when matching calendar events to tasks. Long
+# enough to cover anything you would plausibly have scheduled, short enough that
+# one listing answers it.
+LOOKAHEAD_DAYS = 30
 
-    The calendar is the source of truth, and it can change behind this app's
-    back: you delete the event in Google Calendar and the task is left claiming
-    time it no longer holds. This reconciles in that direction only. It never
-    creates or moves an event, so the worst it can do is tell the truth.
 
-    Matches on the calendar's own event id where there is one, and falls back to
-    title and start time for bookings recorded before ids were stored.
+class Resynced(BaseModel):
+    """What a refresh changed, in both directions."""
+
+    cleared: list[str] = Field(default_factory=list, description="Bookings whose event is gone.")
+    adopted: list[str] = Field(
+        default_factory=list, description="Tasks matched to an event already on the calendar."
+    )
+
+
+def resync_bookings() -> Resynced:
+    """Reconcile the task list against the calendar, both ways.
+
+    Clears a booking whose event has been deleted, and adopts an event whose
+    title matches a task that is not yet marked as booked. The second half is
+    what makes the button useful on a calendar this app did not write: events
+    booked before bookings were recorded, or added by hand, still tick their
+    task off.
+
+    Never creates, moves or deletes an event. The calendar is the source of
+    truth and this only ever makes the task list agree with it.
     """
     from calendar_backend import get_backend
 
-    booked = [task for task in _load() if task.booked]
-    if not booked:
-        return []
+    tasks = _load()
+    if not tasks:
+        return Resynced()
 
     backend = get_backend()
-    # One listing per distinct day, not one per task.
-    days = {task.booked.date for task in booked}
-    events_by_day = {}
-    for day in days:
-        try:
-            events_by_day[day] = backend.list_events(DateType.fromisoformat(day))
-        except (ValueError, OSError):
-            # A day we cannot read is a day we cannot judge. Leave those tasks be
-            # rather than unticking on the strength of a failed lookup.
-            events_by_day[day] = None
+    today = backend.today()
+    try:
+        events = backend.list_range(today, today + timedelta(days=LOOKAHEAD_DAYS))
+    except (ValueError, OSError):
+        # A calendar we cannot read is one we cannot judge. Change nothing rather
+        # than unticking everything on the strength of a failed lookup.
+        return Resynced()
 
-    cleared = []
-    for task in booked:
-        events = events_by_day.get(task.booked.date)
-        if events is None:
+    by_id = {event.id: event for event in events}
+    result = Resynced()
+
+    for task in tasks:
+        if task.booked:
+            if task.booked.event_id:
+                still_there = task.booked.event_id in by_id
+            else:
+                # Recorded before ids were stored. Title and start time is enough
+                # to tell two events with the same name apart by when they are.
+                still_there = any(
+                    event.title == task.title
+                    and event.start_time == task.booked.start_time
+                    and event.date == task.booked.date
+                    for event in events
+                )
+            if not still_there:
+                task.booked = None
+                task.status = "open"
+                result.cleared.append(task.id)
             continue
-        if task.booked.event_id:
-            still_there = any(event.id == task.booked.event_id for event in events)
-        else:
-            still_there = any(
-                event.title == task.title and event.start_time == task.booked.start_time
-                for event in events
-            )
-        if not still_there:
-            task.booked = None
-            task.status = "open"
-            cleared.append(task.id)
 
-    if cleared:
+        # Not marked as booked. Does the calendar already say otherwise?
+        match = next((event for event in events if event.title == task.title), None)
+        if match:
+            task.booked = Booking(
+                date=match.date,
+                start_time=match.start_time,
+                duration_minutes=match.duration_minutes,
+                event_id=match.id,
+            )
+            task.status = "done"
+            result.adopted.append(task.id)
+
+    if result.cleared or result.adopted:
         _save()
-    return cleared
+    return result
 
 
 def delete_task(task_id: str) -> bool:

@@ -214,11 +214,14 @@ export default function TaskPanel({
     setNote(null);
     try {
       const result = await resyncTasks();
-      setNote(
-        result.cleared.length === 0
-          ? "Everything matches the calendar."
-          : `${result.cleared.length} booking${result.cleared.length === 1 ? "" : "s"} no longer on the calendar, reopened.`,
-      );
+      const parts: string[] = [];
+      if (result.adopted.length) {
+        parts.push(`${result.adopted.length} already on your calendar, ticked off`);
+      }
+      if (result.cleared.length) {
+        parts.push(`${result.cleared.length} no longer on your calendar, reopened`);
+      }
+      setNote(parts.length ? `${parts.join(". ")}.` : "Everything matches your calendar.");
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

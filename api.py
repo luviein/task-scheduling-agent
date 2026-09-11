@@ -92,18 +92,22 @@ class Resync(BaseModel):
     """What the refresh changed, so the UI can say something specific."""
 
     cleared: list[str] = Field(
-        description="Ids of tasks whose calendar event is gone. They are open again."
+        default_factory=list, description="Tasks whose calendar event is gone. Open again."
+    )
+    adopted: list[str] = Field(
+        default_factory=list, description="Tasks matched to an event already on the calendar."
     )
     tasks: list[Task]
 
 
 @app.post("/api/tasks/resync")
 def resync() -> Resync:
-    """Reconcile ticked-off tasks against the calendar.
+    """Reconcile the task list against the calendar, both ways.
 
     Declared before the /{task_id} routes so "resync" is never read as an id.
     """
-    return Resync(cleared=resync_bookings(), tasks=list_tasks())
+    changed = resync_bookings()
+    return Resync(cleared=changed.cleared, adopted=changed.adopted, tasks=list_tasks())
 
 
 @app.post("/api/tasks", status_code=201)

@@ -71,6 +71,18 @@ class CalendarBackend(ABC):
     ) -> CalendarEvent:
         """Book the event. Conflict checking happens in the tool layer, above this."""
 
+    def list_range(self, start: DateType, end: DateType) -> list[CalendarEvent]:
+        """Every event from start to end, both inclusive, earliest first.
+
+        Default walks a day at a time so a backend only has to supply the two
+        primitives. A real calendar can usually answer a span in one request and
+        should override this.
+        """
+        events = []
+        for offset in range((end - start).days + 1):
+            events.extend(self.list_events(start + timedelta(days=offset)))
+        return sorted(events, key=lambda event: (event.date, event.start_time))
+
     def find_free_slots(self, day: DateType, duration_minutes: int) -> list[str]:
         """Start times, on the half-hour grid, where the block fits inside business hours."""
         busy = [event.span() for event in self.list_events(day)]
