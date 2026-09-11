@@ -6,6 +6,7 @@ Everything the evals layer needs is recorded in AgentState.tool_log.
 Provider is Gemini, but nothing below the node bodies depends on that.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -74,6 +75,24 @@ Rules:
   them, do not keep proposing alternatives: say plainly that the time is outside
   business hours and what the range is.
 - When every part of the request is handled, stop calling tools and give a short summary."""
+
+
+def config_fingerprint() -> dict:
+    """What a score depends on besides the agent's own cleverness.
+
+    Comparing runs is meaningless without this. The prompt changed twice and the
+    turn ceiling once in a single afternoon, and nothing in the report said so,
+    which made every earlier number quietly incomparable.
+
+    The prompt is hashed from the template, not the rendered prompt, so the
+    fingerprint does not change just because it is a different day.
+    """
+    return {
+        "model": MODEL,
+        "prompt_sha": hashlib.sha256(SYSTEM_TEMPLATE.encode("utf-8")).hexdigest()[:12],
+        "max_turns": MAX_TURNS,
+        "max_revisions": MAX_REVISIONS,
+    }
 
 
 def system_prompt() -> str:

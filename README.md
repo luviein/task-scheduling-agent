@@ -325,6 +325,35 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### Guarding against regressions
+
+Scores nobody diffs are scores nobody reads. `eval_gate.py` compares the latest
+report against a blessed baseline, per case and per metric, and exits non-zero on
+any drop.
+
+```bash
+python eval_run.py                # record traces (spends quota)
+python eval_score.py              # score them
+python eval_gate.py               # fails if anything went backwards
+python eval_gate.py --accept      # bless the current report as the new baseline
+```
+
+Three things it treats as failures, beyond a lower number. A case present in the
+baseline and missing now, because deleting the case you cannot pass is the
+cheapest route to a perfect score. A metric that stopped being scored, because
+otherwise `--no-judge` would hide every judged regression behind a cheaper run.
+And nothing else: a config change is reported as a caveat, not a failure.
+
+That last part needs the config to be recorded at all, which it now is. Traces
+and reports carry the model, a hash of the prompt template, and the two loop
+ceilings. The prompt changed twice and the turn ceiling once in a single
+afternoon here, and nothing in the report said so, which quietly made every
+earlier number incomparable.
+
+The gate is not in CI, because producing a report costs model quota. It runs
+locally, and the exit code is there for whoever wants to wire it into a release
+step.
+
 ### Tests
 
 ```bash
@@ -404,6 +433,7 @@ repeats about weekly until the app is published.
 | `eval_run.py` | Executes cases, saves traces |
 | `eval_metrics.py` | Four rule-based metrics, one LLM-judged |
 | `eval_score.py` | Scores saved traces, writes the report |
+| `eval_gate.py` | Compares a report against the baseline, fails on any drop |
 | `tests/` | Unit and route tests, offline and keyless |
 
 ---

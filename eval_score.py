@@ -109,7 +109,16 @@ def main() -> None:
         print(f"  {name:<22} {sum(scores) / len(scores):.2f}")
 
     REPORT_FILE.write_text(
-        json.dumps({"model": payload["model"], "recorded_at": payload["recorded_at"], "cases": report}, indent=2),
+        json.dumps(
+            {
+                "model": payload["model"],
+                # Older trace files predate this, so a report can lack it too.
+                "config": payload.get("config", {}),
+                "recorded_at": payload["recorded_at"],
+                "cases": report,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     print(f"\nWrote {REPORT_FILE}")

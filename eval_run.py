@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent import MODEL, run
+from agent import MODEL, config_fingerprint, run
 from calendar_backend import MockCalendar, use_backend
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
@@ -89,6 +89,7 @@ def main() -> None:
 
     payload = {
         "model": MODEL,
+        "config": config_fingerprint(),
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "results": results,
     }
