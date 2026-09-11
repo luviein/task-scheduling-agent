@@ -1,4 +1,6 @@
 deepeval==4.2.2
+google-api-python-client==2.200.0
+google-auth-oauthlib==1.4.1
 google-genai==2.22.0
 langgraph==1.2.11
 pydantic==2.13.5

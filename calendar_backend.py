@@ -15,6 +15,7 @@ the freebusy endpoint if that turns out to be cheaper than listing.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import date as DateType, datetime, time as TimeType, timedelta
 from os import getenv
 
@@ -106,7 +107,15 @@ class MockCalendar(CalendarBackend):
         return event
 
 
-_BACKENDS: dict[str, type[CalendarBackend]] = {"mock": MockCalendar}
+def _google() -> CalendarBackend:
+    # Imported here, not at module level, so the mock path needs neither the
+    # Google libraries nor a credentials file.
+    from google_calendar import GoogleCalendar
+
+    return GoogleCalendar()
+
+
+_BACKENDS: dict[str, Callable[[], CalendarBackend]] = {"mock": MockCalendar, "google": _google}
 _active: CalendarBackend | None = None
 
 
