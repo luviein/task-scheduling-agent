@@ -179,6 +179,31 @@ validates, executes, and returns a uniform `ToolCallResult` envelope. It never
 raises. The eval layer asserts against that envelope rather than against prose,
 which is what makes tool-calling accuracy measurable instead of anecdotal.
 
+### One calendar interface, two implementations
+
+The tool layer never touches a calendar. It asks `get_backend()`, which returns
+whichever `CalendarBackend` the `CALENDAR_BACKEND` variable names: the in-memory
+mock, or a real Google Calendar over OAuth. A backend supplies two primitives,
+listing a day and creating an event; free-slot search has a default derived from
+listing, so a third implementation would be about forty lines.
+
+Two decisions worth defending:
+
+**Conflict detection lives in the tool layer, not in a backend.** Refusing to
+double-book is the agent's rule, not the calendar's. Google accepts overlapping
+events without complaint, so pushing the check down would make the agent behave
+differently depending on where its events happened to be stored.
+
+**The clock belongs to the calendar.** `backend.today()` returns the mock's
+frozen date or the real date in the real calendar's timezone. A frozen clock is
+what makes evals reproducible; a live calendar with a frozen clock would have
+the agent reasoning confidently about the wrong day.
+
+**The eval suite is pinned to the mock permanently.** `eval_run.py` overrides the
+backend at import regardless of configuration. Scoring against a live calendar
+would create real events, defeat `reset_calendar()`, and make every score depend
+on that week's meetings.
+
 ### Provider independence
 
 The project was built against one provider and moved to another mid-build. Only
@@ -256,6 +281,28 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### Running against a real calendar
+
+Optional. The mock is the default and needs none of this.
+
+Create a Google Cloud project, enable the Google Calendar API, and configure the
+OAuth consent screen as External with your own address added as a test user.
+Request the `calendar.events` scope, which covers reading and writing events and
+nothing wider. Create an OAuth client of type **Desktop app**, download the JSON,
+and save it in the project root as `credentials.json`.
+
+```bash
+# first run opens a browser for consent and writes token.json
+python google_calendar.py 2026-09-11
+
+# then point the agent at it
+CALENDAR_BACKEND=google python agent.py "book an hour tomorrow for the QA refactor"
+```
+
+`credentials.json` and `token.json` are both gitignored. While the app sits in
+Testing status Google expires the refresh token after seven days, so sign-in
+repeats about weekly until the app is published.
+
 ---
 
 ## Files
@@ -264,6 +311,8 @@ python eval_score.py              # adds the LLM judge
 |---|---|
 | `agent.py` | LangGraph state machine, nodes, provider calls |
 | `tools.py` | Three tools, their Pydantic schemas, and the validating dispatcher |
+| `calendar_backend.py` | The calendar interface, the mock implementation, backend selection |
+| `google_calendar.py` | Google Calendar over OAuth, imported only when selected |
 | `mock_data.py` | Fake task list and calendar, frozen clock, state reset |
 | `eval_cases.py` | The eval set and its written expectations |
 | `eval_run.py` | Executes cases, saves traces |
