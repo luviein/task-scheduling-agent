@@ -27,7 +27,13 @@ class Proposal(BaseModel):
 
     tool: str
     input: dict
-    already_booked: list[dict] = Field(default_factory=list)
+    already_booked: list[dict] = Field(
+        default_factory=list, description="That day's events; each carries a `clashes` flag."
+    )
+    clashes_with: list[str] = Field(
+        default_factory=list,
+        description="Titles the proposed slot would run into. Empty when the slot is free.",
+    )
     other_options: list[str] = Field(default_factory=list)
 
 

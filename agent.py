@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import time
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -23,7 +24,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, ConfigDict, Field
 
-from calendar_backend import BUSINESS_END, BUSINESS_START, get_backend
+from calendar_backend import BUSINESS_END, BUSINESS_START, get_backend, overlaps
 from tools import ToolCallResult, anthropic_tool_defs, day_agenda, dispatch
 
 load_dotenv()
@@ -243,6 +244,27 @@ def reason(state: AgentState) -> dict:
     }
 
 
+def overlaps_slot(day: str, start: str | None, minutes: int, booked: dict) -> bool:
+    """Does a proposed block run into one already-booked entry?
+
+    Same overlap rule the tool layer enforces, reused rather than restated, so
+    the warning a human sees and the refusal the tool would give cannot disagree.
+    """
+    if not day or not start:
+        return False
+    try:
+        begin = datetime.fromisoformat(f"{day}T{start}")
+        block = (begin, begin + timedelta(minutes=int(minutes)))
+        taken = (
+            datetime.fromisoformat(f"{day}T{booked['from']}"),
+            datetime.fromisoformat(f"{day}T{booked['to']}"),
+        )
+    except (ValueError, KeyError, TypeError):
+        # A malformed proposal is the dispatcher's problem, not this warning's.
+        return False
+    return overlaps(block, taken)
+
+
 def confirm(state: AgentState) -> dict:
     """Pause for human approval before anything is written.
 
@@ -273,11 +295,21 @@ def confirm(state: AgentState) -> dict:
         day = args.get("date", "")
         duration = args.get("duration_minutes", 60)
         free = dispatch("find_free_slots", {"date": day, "duration_minutes": duration})
+
+        # Which existing events the proposal would run into. Asked for a specific
+        # time, the model will propose it even when the day is busy; the write
+        # would then be refused, but only after a human had already approved it.
+        # Work this out here so the approval prompt can say so up front.
+        agenda = day_agenda(day)
+        for booked in agenda:
+            booked["clashes"] = overlaps_slot(day, args.get("start_time"), duration, booked)
+
         proposals.append(
             {
                 "tool": call.name,
                 "input": args,
-                "already_booked": day_agenda(day),
+                "already_booked": agenda,
+                "clashes_with": [item["title"] for item in agenda if item["clashes"]],
                 "other_options": [slot for slot in (free.output or {}).get("slots", []) if slot != args.get("start_time")],
             }
         )

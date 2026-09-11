@@ -8,6 +8,7 @@
   --warn: #b45309;
   --warn-bg: #fff7ed;
   --danger: #b42318;
+  --danger-bg: #fef3f2;
   --live: #b42318;
 
   color-scheme: light dark;
@@ -27,6 +28,7 @@
     --warn: #fbbf24;
     --warn-bg: #2a2214;
     --danger: #f87171;
+    --danger-bg: #2a1616;
     --live: #f87171;
   }
 }
@@ -353,6 +355,46 @@ button.danger {
 
 .approval {
   border-color: var(--warn);
+}
+
+.approval.conflict {
+  border-color: var(--danger);
+}
+
+.badge.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.when.struck {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.clash-note {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.88rem;
+}
+
+.context li.clashing {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.clash-tag {
+  margin-left: 6px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  padding: 0 6px;
 }
 
 .approval-head {

@@ -25,7 +25,13 @@ export type TaskDraft = Omit<Task, "id">;
 // Patching sends only the fields that changed, so an omitted field keeps its value.
 export type TaskPatch = Partial<TaskDraft>;
 
-export type BookedSlot = { title: string; from: string; to: string };
+export type BookedSlot = {
+  title: string;
+  from: string;
+  to: string;
+  // True when the proposed slot would run into this entry.
+  clashes: boolean;
+};
 
 export type Proposal = {
   tool: string;
@@ -36,6 +42,8 @@ export type Proposal = {
     duration_minutes?: number;
   };
   already_booked: BookedSlot[];
+  // Titles the proposed slot would run into. Empty when the slot is free.
+  clashes_with: string[];
   other_options: string[];
 };
 

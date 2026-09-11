@@ -29,18 +29,29 @@ function ProposalCard({
 }) {
   const [reason, setReason] = useState("");
   const { title, date, start_time, duration_minutes } = proposal.input;
+  const clashes = proposal.clashes_with;
+  const busyThen = clashes.length > 0;
 
   return (
-    <div className="card approval">
+    <div className={busyThen ? "card approval conflict" : "card approval"}>
       <div className="approval-head">
-        <span className="badge warn">Needs your approval</span>
+        <span className={busyThen ? "badge danger" : "badge warn"}>
+          {busyThen ? "You are not free then" : "Needs your approval"}
+        </span>
         <span className="muted">nothing is written until you say so</span>
       </div>
 
       <h3>{title ?? proposal.tool}</h3>
-      <p className="when">
+      <p className={busyThen ? "when struck" : "when"}>
         {date} at {start_time} for {duration_minutes} minutes
       </p>
+
+      {busyThen && (
+        <p className="clash-note">
+          {start_time} runs into {clashes.join(" and ")}. Approving would be refused,
+          so pick one of the free starts below or say what you would rather do.
+        </p>
+      )}
 
       <div className="context">
         <div>
@@ -50,11 +61,15 @@ function ProposalCard({
           ) : (
             <ul>
               {proposal.already_booked.map((slot) => (
-                <li key={`${slot.from}-${slot.title}`}>
+                <li
+                  key={`${slot.from}-${slot.title}`}
+                  className={slot.clashes ? "clashing" : undefined}
+                >
                   <code>
                     {slot.from}-{slot.to}
                   </code>{" "}
                   {slot.title}
+                  {slot.clashes && <span className="clash-tag">clashes</span>}
                 </li>
               ))}
             </ul>
@@ -62,7 +77,7 @@ function ProposalCard({
         </div>
 
         <div>
-          <h4>Other free starts</h4>
+          <h4>{busyThen ? "When you are free" : "Other free starts"}</h4>
           {proposal.other_options.length === 0 ? (
             <p className="muted">No other openings</p>
           ) : (
@@ -85,8 +100,12 @@ function ProposalCard({
       </div>
 
       <div className="actions">
-        <button className="primary" disabled={busy} onClick={() => onDecide(true)}>
-          Approve
+        <button
+          className={busyThen ? "" : "primary"}
+          disabled={busy}
+          onClick={() => onDecide(true)}
+        >
+          {busyThen ? "Approve anyway" : "Approve"}
         </button>
         <button className="danger" disabled={busy} onClick={() => onDecide(false)}>
           Decline
