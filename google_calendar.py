@@ -64,10 +64,14 @@ class GoogleCalendar(CalendarBackend):
 
     @property
     def zone(self) -> ZoneInfo:
-        """The calendar's own timezone, so 09:00 means what it means in the UI."""
+        """The calendar's own timezone, so 09:00 means what it means in the UI.
+
+        Read from an events listing rather than `calendars().get`, which needs a
+        wider scope than calendar.events. One cached call either way.
+        """
         if self._zone is None:
-            info = self._service.calendars().get(calendarId=self.calendar_id).execute()
-            self._zone = ZoneInfo(info["timeZone"])
+            probe = self._service.events().list(calendarId=self.calendar_id, maxResults=1).execute()
+            self._zone = ZoneInfo(probe["timeZone"])
         return self._zone
 
     def list_events(self, day: DateType) -> list[CalendarEvent]:

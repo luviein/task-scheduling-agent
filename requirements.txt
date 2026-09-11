@@ -5,3 +5,4 @@ google-genai==2.22.0
 langgraph==1.2.11
 pydantic==2.13.5
 python-dotenv==1.2.3
+tzdata==2026.3
