@@ -325,6 +325,26 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+103 tests, about a second, no API key and no network. The suite covers the
+overlap rule and the free-slot grid, the dispatcher's validation and refusal
+contract, the task store including both directions of the reconcile, the graph's
+routing and schema adapter, and every HTTP route that does not spend quota.
+
+Two guarantees are enforced in `conftest.py` rather than left to discipline: the
+mock calendar is forced regardless of `CALENDAR_BACKEND`, and task persistence is
+switched off process-wide. Without them a test run could create real events or
+overwrite a real task list, because both are module-level state.
+
+The eval suite is a separate thing and answers a different question. These tests
+ask whether the code is correct; the evals ask whether the agent is any good.
+
 ### Running the web UI
 
 Two processes. The API on 8000, the client on 5173, which proxies `/api` to the
@@ -384,6 +404,7 @@ repeats about weekly until the app is published.
 | `eval_run.py` | Executes cases, saves traces |
 | `eval_metrics.py` | Four rule-based metrics, one LLM-judged |
 | `eval_score.py` | Scores saved traces, writes the report |
+| `tests/` | Unit and route tests, offline and keyless |
 
 ---
 
