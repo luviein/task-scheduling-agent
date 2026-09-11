@@ -1,0 +1,99 @@
+"""HTTP over the agent. Thin on purpose: every route is a few lines around session.py.
+
+The interesting design constraint is the approval pause. A run does not finish in
+one request, so the API is two calls rather than one:
+
+    POST /api/runs                    -> {"status": "paused", "thread_id": ..., "approval": {...}}
+    POST /api/runs/{id}/decision      -> {"status": "done", "final": {...}}   (or paused again)
+
+The thread id is the session. The graph's checkpointer holds the paused run in
+memory between the two, which means sessions do not survive a restart. Fine for a
+single-user local tool; a real deployment swaps InMemorySaver for a durable one
+and changes nothing else.
+
+Routes are plain `def`, not `async def`. A run blocks for ten to twenty seconds on
+model calls, and FastAPI runs sync routes in a threadpool, so one slow run does
+not freeze the server.
+"""
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+from agent import BUSINESS_END, BUSINESS_START, MODEL, DailyQuotaExhausted
+from calendar_backend import get_backend
+from mock_data import TASKS
+from session import RunStep, resume, start
+
+app = FastAPI(title="Task Scheduling Agent", version="1.0")
+
+# The Vite dev server runs on another port, so the browser treats it as a
+# different origin. Local development only; a deployed build would be served
+# from this same origin and need none of this.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class StartRequest(BaseModel):
+    instruction: str = Field(min_length=1, description="What to ask the agent to do.")
+
+
+class DecisionRequest(BaseModel):
+    decision: bool | str = Field(
+        description="true approves, false is a hard no, and any string is a "
+        "counter-proposal the agent will try to satisfy."
+    )
+
+
+class Config(BaseModel):
+    """What the UI needs to describe itself honestly: which calendar, which day."""
+
+    model: str
+    calendar: str
+    today: str
+    business_hours: str
+
+
+@app.get("/api/config")
+def config() -> Config:
+    backend = get_backend()
+    return Config(
+        model=MODEL,
+        calendar=backend.name,
+        today=backend.today().isoformat(),
+        business_hours=f"{BUSINESS_START:%H:%M}-{BUSINESS_END:%H:%M}",
+    )
+
+
+@app.get("/api/tasks")
+def tasks() -> list[dict]:
+    """The task list the agent searches. Read-only; the UI shows it as context."""
+    return TASKS
+
+
+def _guard(fn, *args) -> RunStep:
+    """One place to turn an exhausted free tier into an honest HTTP status."""
+    try:
+        return fn(*args)
+    except DailyQuotaExhausted as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/api/runs")
+def create_run(body: StartRequest) -> RunStep:
+    """Start a run. Returns at the first approval request, or at the end."""
+    return _guard(start, body.instruction)
+
+
+@app.post("/api/runs/{thread_id}/decision")
+def decide(thread_id: str, body: DecisionRequest) -> RunStep:
+    """Answer a pending approval and carry the run on."""
+    try:
+        return _guard(resume, thread_id, body.decision)
+    except ValueError as exc:
+        # No checkpoint under that id: an unknown session, or one lost to a restart.
+        raise HTTPException(status_code=404, detail=f"No paused run {thread_id}") from exc
