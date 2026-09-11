@@ -7,10 +7,14 @@ because it is the reason nobody looks at the numbers any more.
 
 import pytest
 
-from eval_gate import TOLERANCE, compare, render
+from eval_gate import TOKEN_TOLERANCE, TOLERANCE, compare, render
 
 
-def report(cases: dict[str, dict[str, float]], config: dict | None = None) -> dict:
+def report(
+    cases: dict[str, dict[str, float]],
+    config: dict | None = None,
+    tokens: dict[str, int] | None = None,
+) -> dict:
     """Build a report in the shape eval_score.py writes."""
     return {
         "model": "test-model",
@@ -19,6 +23,11 @@ def report(cases: dict[str, dict[str, float]], config: dict | None = None) -> di
         "cases": [
             {
                 "case": name,
+                "usage": (
+                    {"calls": 3, "input_tokens": (tokens or {}).get(name, 0), "output_tokens": 0}
+                    if tokens and name in tokens
+                    else {}
+                ),
                 "metrics": {
                     metric: {"score": score, "passed": score >= 0.5, "reason": ""}
                     for metric, score in metrics.items()
@@ -130,8 +139,61 @@ def test_render_names_the_case_and_both_scores():
     assert "REGRESSIONS" in output
     assert "book / Tool Selection" in output
     assert "1.00 -> 0.50" in output
-    assert output.strip().endswith("FAIL: scores went backwards")
+    assert output.strip().endswith("FAIL: something went backwards")
 
 
 def test_render_says_so_when_nothing_moved():
     assert render(compare(BASE, BASE)).strip().endswith("PASS: nothing went backwards")
+
+
+# --- spend ------------------------------------------------------------------
+SCORES = {"book": {"Tool Selection": 1.0, "Task Execution": 1.0}}
+
+
+def test_the_same_token_count_passes():
+    base = report(SCORES, tokens={"book": 2000})
+    assert not compare(base, report(SCORES, tokens={"book": 2000})).failed
+
+
+def test_a_big_jump_in_tokens_fails_even_with_perfect_scores():
+    """The whole point: a right answer that costs twice as much has got worse."""
+    base = report(SCORES, tokens={"book": 2000})
+    result = compare(base, report(SCORES, tokens={"book": 4000}))
+
+    assert result.failed
+    assert result.regressions == []  # scores are untouched
+    assert len(result.costlier) == 1
+    assert result.costlier[0].ratio == pytest.approx(2.0)
+
+
+def test_token_drift_inside_the_tolerance_is_ignored():
+    """The model is not deterministic; small movement is not a regression."""
+    base = report(SCORES, tokens={"book": 2000})
+    drifted = int(2000 * (1 + TOKEN_TOLERANCE * 0.8))
+    assert not compare(base, report(SCORES, tokens={"book": drifted})).failed
+
+
+def test_spending_much_less_is_reported_as_cheaper_and_passes():
+    base = report(SCORES, tokens={"book": 4000})
+    result = compare(base, report(SCORES, tokens={"book": 2000}))
+
+    assert not result.failed
+    assert len(result.cheaper) == 1
+
+
+def test_cases_recorded_before_spend_was_tracked_are_skipped():
+    """Older reports carry no usage. They must not read as zero tokens."""
+    base = report(SCORES)  # no usage at all
+    result = compare(base, report(SCORES, tokens={"book": 2000}))
+
+    assert not result.failed
+    assert (result.costlier, result.cheaper) == ([], [])
+
+
+def test_render_explains_a_cost_regression():
+    base = report(SCORES, tokens={"book": 2000})
+    output = render(compare(base, report(SCORES, tokens={"book": 4000})))
+
+    assert "MORE EXPENSIVE" in output
+    assert "2000 -> 4000 tokens (+100%)" in output
+    assert output.strip().endswith("FAIL: something went backwards")

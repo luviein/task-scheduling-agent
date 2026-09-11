@@ -84,9 +84,13 @@ def main() -> None:
         error_config=ErrorConfig(ignore_errors=True),
     )
 
+    spend_by_case = {trace["case"]: trace.get("usage") or {} for trace in payload["results"]}
+
     report, totals = [], {}
     for result in results.test_results:
-        row = {"case": result.name, "metrics": {}}
+        # Recorded alongside the scores: a case that gets the right answer for
+        # twice the tokens has got worse, and no correctness metric says so.
+        row = {"case": result.name, "usage": spend_by_case.get(result.name, {}), "metrics": {}}
         for metric in result.metrics_data or []:
             row["metrics"][metric.name] = {
                 "score": round(metric.score or 0.0, 2),
@@ -107,6 +111,15 @@ def main() -> None:
     print("AGGREGATE")
     for name, scores in totals.items():
         print(f"  {name:<22} {sum(scores) / len(scores):.2f}")
+
+    spent = [row["usage"] for row in report if row["usage"]]
+    if spent:
+        tokens = sum(u.get("input_tokens", 0) + u.get("output_tokens", 0) for u in spent)
+        print("\nSPEND")
+        print(f"  {'Model calls':<22} {sum(u.get('calls', 0) for u in spent)}")
+        print(f"  {'Tokens':<22} {tokens}")
+        print(f"  {'Tokens per case':<22} {tokens // len(spent)}")
+        print(f"  {'Seconds':<22} {sum(u.get('seconds', 0.0) for u in spent):.1f}")
 
     REPORT_FILE.write_text(
         json.dumps(

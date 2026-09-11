@@ -6,10 +6,16 @@
     "max_turns": 8,
     "max_revisions": 2
   },
-  "recorded_at": "2026-09-11T14:33:28+00:00",
+  "recorded_at": "2026-09-11T16:55:49+00:00",
   "cases": [
     {
       "case": "search_only",
+      "usage": {
+        "calls": 3,
+        "input_tokens": 2421,
+        "output_tokens": 90,
+        "seconds": 12.04
+      },
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -30,16 +36,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 1 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The output accurately identifies the open QA task found in the context without fabricating any bookings or contradicting the tool results, successfully adhering to all evaluation criteria."
         }
       }
     },
     {
       "case": "book_high_priority",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -60,16 +62,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 3 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The model correctly identified the high-priority tasks from the tool results, successfully booked one of them, and accurately reflected the date and start time in its summary, showing complete alignment with the tool outputs."
         }
       }
     },
     {
       "case": "conflict_retry",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -90,16 +88,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 2 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The output accurately reflects the tool results, correctly noting that the task was found and the booking was made at 09:30 due to the 09:00 slot being unavailable, which aligns with the context provided."
         }
       }
     },
     {
       "case": "no_such_task",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -120,16 +114,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The model accurately reflected the outcome shown in the tool results, which indicated that no tasks matching 'tax return' were found, leading to no scheduled time."
         }
       }
     },
     {
       "case": "multi_step",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -150,16 +140,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The agent correctly identified the tasks, performed the bookings, and accurately summarized the outcome. The context confirms both high-priority AI tasks were successfully scheduled for the requested time frame."
         }
       }
     },
     {
       "case": "revise_after_decline",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -180,16 +166,12 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 2 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 0.8,
-          "passed": true,
-          "reason": "The output accurately reflects the successful booking of the event at 13:00 as shown in the final tool call. Although the output incorrectly claims the initial time was rejected by the user rather than the system, it correctly identifies the final successful outcome supported by the context."
         }
       }
     },
     {
       "case": "ambiguous_target",
+      "usage": {},
       "metrics": {
         "Tool Selection": {
           "score": 1.0,
@@ -210,11 +192,6 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
-        },
-        "Summary Faithfulness [GEval]": {
-          "score": 1.0,
-          "passed": true,
-          "reason": "The agent correctly identified the available tasks from the tool output and properly requested clarification from the user, as the input was ambiguous regarding which task to book."
         }
       }
     }

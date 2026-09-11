@@ -30,6 +30,12 @@ BASELINE_FILE = RUNS_DIR / "baseline.json"
 # noise rather than a change.
 TOLERANCE = 0.005
 
+# Token counts move run to run even with the prompt unchanged, because the model
+# is not deterministic. This is set wide enough to ignore that and narrow enough
+# to catch a change that actually made the agent more expensive: an extra turn on
+# a short case is roughly a third more tokens.
+TOKEN_TOLERANCE = 0.25
+
 
 class Change(BaseModel):
     case: str
@@ -45,17 +51,39 @@ class Change(BaseModel):
         return f"{self.case} / {self.metric}: {self.baseline:.2f} -> {self.current:.2f} ({self.delta:+.2f})"
 
 
+class TokenChange(BaseModel):
+    case: str
+    baseline: int
+    current: int
+
+    @property
+    def ratio(self) -> float:
+        return self.current / self.baseline if self.baseline else 1.0
+
+    def line(self) -> str:
+        return (
+            f"{self.case}: {self.baseline} -> {self.current} tokens "
+            f"({(self.ratio - 1) * 100:+.0f}%)"
+        )
+
+
 class GateResult(BaseModel):
     regressions: list[Change] = Field(default_factory=list)
     improvements: list[Change] = Field(default_factory=list)
     missing_cases: list[str] = Field(default_factory=list, description="In the baseline, absent now.")
     new_cases: list[str] = Field(default_factory=list, description="Not in the baseline yet.")
     missing_metrics: list[str] = Field(default_factory=list, description="Scored before, not now.")
+    costlier: list[TokenChange] = Field(
+        default_factory=list, description="Cases that now spend materially more tokens."
+    )
+    cheaper: list[TokenChange] = Field(default_factory=list)
     config_changes: dict[str, tuple[object, object]] = Field(default_factory=dict)
 
     @property
     def failed(self) -> bool:
-        return bool(self.regressions or self.missing_cases or self.missing_metrics)
+        return bool(
+            self.regressions or self.missing_cases or self.missing_metrics or self.costlier
+        )
 
 
 def scores_of(report: dict) -> dict[str, dict[str, float]]:
@@ -64,6 +92,16 @@ def scores_of(report: dict) -> dict[str, dict[str, float]]:
         row["case"]: {name: metric["score"] for name, metric in row["metrics"].items()}
         for row in report.get("cases", [])
     }
+
+
+def tokens_of(report: dict) -> dict[str, int]:
+    """{case name: total tokens}, skipping cases recorded before spend was tracked."""
+    totals = {}
+    for row in report.get("cases", []):
+        usage = row.get("usage") or {}
+        if usage:
+            totals[row["case"]] = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+    return totals
 
 
 def compare(baseline: dict, current: dict) -> GateResult:
@@ -91,6 +129,15 @@ def compare(baseline: dict, current: dict) -> GateResult:
                 result.regressions.append(change)
             elif now > was + TOLERANCE:
                 result.improvements.append(change)
+
+    old_tokens, new_tokens = tokens_of(baseline), tokens_of(current)
+    for case in sorted(set(old_tokens) & set(new_tokens)):
+        was, now = old_tokens[case], new_tokens[case]
+        change = TokenChange(case=case, baseline=was, current=now)
+        if now > was * (1 + TOKEN_TOLERANCE):
+            result.costlier.append(change)
+        elif now < was * (1 - TOKEN_TOLERANCE):
+            result.cheaper.append(change)
 
     result.missing_metrics.sort()
     return result
@@ -122,6 +169,17 @@ def render(result: GateResult) -> str:
         lines.append("  Re-run without --no-judge, or accept a new baseline on purpose.")
         lines.append("")
 
+    if result.costlier:
+        lines.append(f"MORE EXPENSIVE ({len(result.costlier)})")
+        lines += [f"  {change.line()}" for change in result.costlier]
+        lines.append("  A right answer for more tokens is still worse.")
+        lines.append("")
+
+    if result.cheaper:
+        lines.append(f"CHEAPER ({len(result.cheaper)})")
+        lines += [f"  {change.line()}" for change in result.cheaper]
+        lines.append("")
+
     if result.improvements:
         lines.append(f"IMPROVEMENTS ({len(result.improvements)})")
         lines += [f"  {change.line()}" for change in result.improvements]
@@ -132,7 +190,9 @@ def render(result: GateResult) -> str:
         lines += [f"  {case}" for case in result.new_cases]
         lines.append("")
 
-    lines.append("FAIL: scores went backwards" if result.failed else "PASS: nothing went backwards")
+    lines.append(
+        "FAIL: something went backwards" if result.failed else "PASS: nothing went backwards"
+    )
     return "\n".join(lines)
 
 

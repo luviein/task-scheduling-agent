@@ -6,14 +6,20 @@
     "max_turns": 8,
     "max_revisions": 2
   },
-  "recorded_at": "2026-09-11T14:33:28+00:00",
+  "recorded_at": "2026-09-11T16:55:49+00:00",
   "results": [
     {
       "case": "search_only",
       "instruction": "What QA work do I have open? Don't book anything.",
       "error": null,
-      "seconds": 25.5,
+      "seconds": 12.1,
       "turns": 2,
+      "usage": {
+        "calls": 3,
+        "input_tokens": 2421,
+        "output_tokens": 90,
+        "seconds": 12.04
+      },
       "path": [
         "reason",
         "confirm(skipped)",
@@ -44,7 +50,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for open QA tasks and identified the task 'Refactor Playwright login suite'.",
+        "summary": "I searched for open QA tasks and identified one: Refactor Playwright login suite.",
         "tasks_found": [
           "Refactor Playwright login suite"
         ],

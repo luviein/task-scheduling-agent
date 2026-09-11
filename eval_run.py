@@ -57,6 +57,7 @@ def run_case(case) -> dict:
         "error": error,
         "seconds": round(time.perf_counter() - started, 1),
         "turns": state.turns if state else 0,
+        "usage": state.usage.model_dump() if state else {},
         "path": state.steps if state else [],
         "tool_calls": [entry.model_dump() for entry in state.tool_log] if state else [],
         "final": final,

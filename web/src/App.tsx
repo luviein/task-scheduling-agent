@@ -185,10 +185,18 @@ function Result({ step }: { step: RunStep }) {
 function ToolLog({ step }: { step: RunStep }) {
   if (step.tool_log.length === 0) return null;
 
+  const { calls, input_tokens, output_tokens, seconds } = step.usage;
+  const tokens = input_tokens + output_tokens;
+
   return (
     <details className="card log">
       <summary>
         {step.tool_log.length} tool calls, {step.turns} turns
+        {calls > 0 && (
+          <span className="spend">
+            {calls} model calls, {tokens.toLocaleString()} tokens, {seconds.toFixed(1)}s
+          </span>
+        )}
       </summary>
       <ol>
         {step.tool_log.map((entry, index) => (

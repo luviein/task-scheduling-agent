@@ -72,6 +72,14 @@ export type ToolCall = {
   error: string | null;
 };
 
+// What the run spent. Tool Efficiency counts calls; this is what the calls cost.
+export type Usage = {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  seconds: number;
+};
+
 export type RunStep = {
   thread_id: string;
   status: "paused" | "done";
@@ -80,6 +88,7 @@ export type RunStep = {
   steps: string[];
   tool_log: ToolCall[];
   turns: number;
+  usage: Usage;
 };
 
 // `decision` is the same three-way answer the terminal approver takes:

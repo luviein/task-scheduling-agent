@@ -479,6 +479,13 @@ code {
   font-size: 0.9rem;
 }
 
+.spend {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .log ol {
   margin: 12px 0 0;
   padding-left: 20px;

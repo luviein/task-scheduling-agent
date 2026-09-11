@@ -325,6 +325,29 @@ python eval_score.py --no-judge   # rule-based metrics only
 python eval_score.py              # adds the LLM judge
 ```
 
+### What a run costs
+
+Tool Efficiency counts tool calls because calls cost money, but it was only ever
+a proxy. Every run now carries a ledger: model calls, input and output tokens,
+and wall-clock seconds measured around the provider call, so rate-limit waits
+count as the latency they are.
+
+```
+SPENT: 5 model calls, 7412 tokens (7104 in / 308 out), 21.3s
+```
+
+It appears in the CLI, under the tool log in the UI, and per case in the eval
+report with a suite total.
+
+Rates are not hardcoded. Free-tier usage costs nothing, paid rates change, and a
+made-up number in a report is worse than no number, so dollars appear only if
+`INPUT_COST_PER_MTOK` and `OUTPUT_COST_PER_MTOK` are set.
+
+The gate treats a large jump in tokens as a regression in its own right, at a
+tolerance of 25% because the model is not deterministic. A case that reaches the
+right answer for twice the tokens has got worse, and no correctness metric would
+have said so.
+
 ### Guarding against regressions
 
 Scores nobody diffs are scores nobody reads. `eval_gate.py` compares the latest

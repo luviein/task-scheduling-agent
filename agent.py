@@ -157,6 +157,52 @@ def gemini_tools() -> list[types.Tool]:
     return [types.Tool(function_declarations=declarations)]
 
 
+# --- Cost and latency -------------------------------------------------------
+# Rates are not hardcoded. Free-tier usage costs nothing, paid rates change, and
+# a made-up number in a report is worse than no number. Set these from the
+# provider's pricing page when you want dollars; tokens are recorded regardless.
+INPUT_COST_PER_MTOK = float(os.getenv("INPUT_COST_PER_MTOK", "0") or 0)
+OUTPUT_COST_PER_MTOK = float(os.getenv("OUTPUT_COST_PER_MTOK", "0") or 0)
+
+
+class Usage(BaseModel):
+    """What a run spent. Tool Efficiency counts calls; this is what calls cost."""
+
+    calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    seconds: float = 0.0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+    @property
+    def cost_usd(self) -> float:
+        return (
+            self.input_tokens * INPUT_COST_PER_MTOK + self.output_tokens * OUTPUT_COST_PER_MTOK
+        ) / 1_000_000
+
+    def plus(self, response, seconds: float) -> "Usage":
+        """This ledger plus one model call. Returns a new Usage; never mutates."""
+        meta = getattr(response, "usage_metadata", None)
+        return Usage(
+            calls=self.calls + 1,
+            # A provider that reports nothing must not zero what came before, and
+            # must not crash the run either. Missing counts are simply not added.
+            input_tokens=self.input_tokens + (getattr(meta, "prompt_token_count", 0) or 0),
+            output_tokens=self.output_tokens + (getattr(meta, "candidates_token_count", 0) or 0),
+            seconds=round(self.seconds + seconds, 2),
+        )
+
+    def line(self) -> str:
+        money = f", ${self.cost_usd:.4f}" if self.cost_usd else ""
+        return (
+            f"{self.calls} model calls, {self.total_tokens} tokens "
+            f"({self.input_tokens} in / {self.output_tokens} out), {self.seconds:.1f}s{money}"
+        )
+
+
 # --- State ------------------------------------------------------------------
 class AgentState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -176,6 +222,7 @@ class AgentState(BaseModel):
         description="A write was refused with a counter-proposal and nothing has been booked since.",
     )
     final: FinalAnswer | None = None
+    usage: Usage = Field(default_factory=Usage, description="Tokens, calls and seconds so far.")
 
 
 _CLIENT: genai.Client | None = None
@@ -244,6 +291,7 @@ def reason(state: AgentState) -> dict:
     """Ask the model what to do next. It either emits function calls or stops."""
     contents = state.contents or [types.Content(role="user", parts=[types.Part.from_text(text=state.user_input)])]
 
+    started = time.perf_counter()
     response = call_model(
         model=MODEL,
         contents=contents,
@@ -254,12 +302,16 @@ def reason(state: AgentState) -> dict:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         ),
     )
+    # Measured around call_model, so retries and rate-limit waits are included.
+    # They are latency the caller actually waited through.
+    elapsed = time.perf_counter() - started
 
     reply = response.candidates[0].content
     return {
         "contents": [*contents, reply],
         "wants_tools": bool(response.function_calls),
         "turns": state.turns + 1,
+        "usage": state.usage.plus(response, elapsed),
         "steps": [*state.steps, "reason"],
     }
 
@@ -415,6 +467,7 @@ def summarize(state: AgentState) -> dict:
         role="user",
         parts=[types.Part.from_text(text="Summarize what you did as structured output.")],
     )
+    started = time.perf_counter()
     response = call_model(
         model=MODEL,
         contents=[*state.contents, closing],
@@ -424,6 +477,7 @@ def summarize(state: AgentState) -> dict:
             response_schema=FinalAnswer,
         ),
     )
+    usage = state.usage.plus(response, time.perf_counter() - started)
     final = response.parsed
     if final is not None:
         # The model is not the authority on what it booked. A run that had its
@@ -446,7 +500,7 @@ def summarize(state: AgentState) -> dict:
             "The booking was declined and no replacement was made. Nothing was written to the calendar.",
         ]
 
-    return {"final": final, "steps": [*state.steps, "summarize"]}
+    return {"final": final, "usage": usage, "steps": [*state.steps, "summarize"]}
 
 
 def nudge(state: AgentState) -> dict:
@@ -581,6 +635,7 @@ if __name__ == "__main__":
 
     print(f"\nPATH:  {' -> '.join(state.steps)}")
     print(f"TURNS: {state.turns}")
+    print(f"SPENT: {state.usage.line()}")
     print("\nTOOL CALLS")
     for entry in state.tool_log:
         detail = json.dumps(entry.output) if entry.ok else f"FAIL {entry.error}"

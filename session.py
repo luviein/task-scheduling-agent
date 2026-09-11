@@ -18,7 +18,7 @@ from uuid import uuid4
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
-from agent import AgentState, FinalAnswer, build_agent
+from agent import AgentState, FinalAnswer, Usage, build_agent
 from tools import ToolCallResult
 
 
@@ -52,6 +52,7 @@ class RunStep(BaseModel):
     steps: list[str] = Field(default_factory=list)
     tool_log: list[ToolCallResult] = Field(default_factory=list)
     turns: int = 0
+    usage: Usage = Field(default_factory=Usage, description="Tokens, model calls and seconds so far.")
 
 
 # One compiled graph for the process. Compiling per request would hand each one a
@@ -79,6 +80,7 @@ def _advance(thread_id: str, payload: object) -> RunStep:
             steps=state.steps,
             tool_log=state.tool_log,
             turns=state.turns,
+            usage=state.usage,
         )
 
     return RunStep(
@@ -88,6 +90,7 @@ def _advance(thread_id: str, payload: object) -> RunStep:
         steps=state.steps,
         tool_log=state.tool_log,
         turns=state.turns,
+        usage=state.usage,
     )
 
 
