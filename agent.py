@@ -35,7 +35,10 @@ logging.getLogger("google_genai.models").setLevel(logging.ERROR)
 # Pinned on purpose. Evals are only comparable across runs if the model is fixed.
 # Run `python agent.py --models` to see what your key can reach.
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
-MAX_TURNS = 6  # hard stop so a confused agent can't loop forever
+MAX_TURNS = 8  # hard stop so a confused agent can't loop forever
+# Raised from 6 when the revision path proved to need the headroom: a declined
+# booking costs a turn to refuse, one to look up slots again, and one to re-book,
+# on top of the search and availability turns every run already spends.
 
 # Reads run freely; writes need a human. Adding a destructive tool later means
 # adding it here, not remembering to gate it at the call site.
@@ -60,6 +63,11 @@ Rules:
 - Before booking, call find_free_slots to see what is actually available. Never guess a time.
 - Book the earliest slot it returns that suits the request. Business hours are {opens} to {closes}.
 - If a booking still returns created=false, pick the next free slot and try again.
+- If a booking is refused because the user asked for a different time, that is an
+  instruction, not an ending. Call find_free_slots again if you need to, then call
+  create_calendar_event again with the revised time. Do not summarize until you have.
+- Never report an event as booked unless create_calendar_event returned created=true
+  for it. A refused booking goes in `unresolved`, with the reason it was refused.
 - Nothing can be booked outside business hours. If the user asks for a time outside
   them, do not keep proposing alternatives: say plainly that the time is outside
   business hours and what the range is.
@@ -142,6 +150,10 @@ class AgentState(BaseModel):
     declined: bool = Field(default=False, description="Sticky: once you say no outright, the graph stops asking.")
     revisions: int = Field(default=0, description="Counter-proposals so far, capped at MAX_REVISIONS.")
     decline_reason: str | None = None
+    awaiting_revision: bool = Field(
+        default=False,
+        description="A write was refused with a counter-proposal and nothing has been booked since.",
+    )
     final: FinalAnswer | None = None
 
 
@@ -281,8 +293,9 @@ def confirm(state: AgentState) -> dict:
     if isinstance(decision, str) and state.revisions < MAX_REVISIONS:
         return {
             "approved": False,
+            "awaiting_revision": True,
             "revisions": state.revisions + 1,
-            "decline_reason": f"Not approved. The user said: {decision}. Revise the booking to match, or explain why you cannot.",
+            "decline_reason": f"Not approved. The user said: {decision}. Nothing has been booked yet. Call create_calendar_event again with a time that matches what they asked for, or explain why no such time exists. Do not stop without doing one of those.",
             "steps": [*state.steps, "confirm(revise)"],
         }
 
@@ -318,9 +331,15 @@ def act(state: AgentState) -> dict:
         # Parallel calls go back in ONE turn, in the order they were requested.
         parts.append(types.Part.from_function_response(name=call.name, response=result.model_dump(mode="json")))
 
+    booked = any(
+        result.tool == "create_calendar_event" and result.ok and (result.output or {}).get("created")
+        for result in results
+    )
+
     return {
         "contents": [*state.contents, types.Content(role="user", parts=parts)],
         "tool_log": [*state.tool_log, *results],
+        "awaiting_revision": False if booked else state.awaiting_revision,
         "steps": [*state.steps, "act"],
     }
 
@@ -340,12 +359,64 @@ def summarize(state: AgentState) -> dict:
             response_schema=FinalAnswer,
         ),
     )
-    return {"final": response.parsed, "steps": [*state.steps, "summarize"]}
+    final = response.parsed
+    if final is not None:
+        # The model is not the authority on what it booked. A run that had its
+        # write refused once reported the booking as done anyway, so take this
+        # field from the tool log, which cannot be talked into anything.
+        final.events_created = [
+            entry.output["event"]["title"]
+            for entry in state.tool_log
+            if entry.tool == "create_calendar_event"
+            and entry.ok
+            and (entry.output or {}).get("created")
+            and (entry.output or {}).get("event")
+        ]
+
+    if final is not None and state.awaiting_revision:
+        # Reached the turn ceiling with the revision unfinished. Silence here would
+        # read as success, since events_created is empty either way.
+        final.unresolved = [
+            *final.unresolved,
+            "The booking was declined and no replacement was made. Nothing was written to the calendar.",
+        ]
+
+    return {"final": final, "steps": [*state.steps, "summarize"]}
+
+
+def nudge(state: AgentState) -> dict:
+    """Refuse to let the agent stop halfway through a revision.
+
+    Asked in the prompt to re-propose after a counter-proposal, the model instead
+    looked up free slots and then wrote a summary claiming it had booked one. The
+    prompt could not hold it; this does. Same reasoning as the hard-no rule in
+    `confirm`: state a requirement in the prompt, enforce it in the graph.
+    """
+    reminder = types.Content(
+        role="user",
+        parts=[
+            types.Part.from_text(
+                text=(
+                    "Nothing has been booked. The user declined your first time and asked "
+                    "for a different one. Call create_calendar_event now with a time that "
+                    "matches what they asked for. If no such time is free, say so plainly "
+                    "and put it in unresolved. Do not claim a booking you have not made."
+                )
+            )
+        ],
+    )
+    return {"contents": [*state.contents, reminder], "steps": [*state.steps, "nudge"]}
 
 
 # --- Routing ----------------------------------------------------------------
 def route_after_reason(state: AgentState) -> str:
-    return "confirm" if state.wants_tools and state.turns < MAX_TURNS else "summarize"
+    if state.wants_tools and state.turns < MAX_TURNS:
+        return "confirm"
+    # Stopping is only allowed once the revision is settled, one way or the other.
+    # MAX_TURNS still bounds the loop, so this cannot spin forever.
+    if state.awaiting_revision and state.turns < MAX_TURNS:
+        return "nudge"
+    return "summarize"
 
 
 def build_agent():
@@ -353,10 +424,14 @@ def build_agent():
     graph.add_node("reason", reason)
     graph.add_node("confirm", confirm)
     graph.add_node("act", act)
+    graph.add_node("nudge", nudge)
     graph.add_node("summarize", summarize)
 
     graph.add_edge(START, "reason")
-    graph.add_conditional_edges("reason", route_after_reason, {"confirm": "confirm", "summarize": "summarize"})
+    graph.add_conditional_edges(
+        "reason", route_after_reason, {"confirm": "confirm", "nudge": "nudge", "summarize": "summarize"}
+    )
+    graph.add_edge("nudge", "reason")
     graph.add_edge("confirm", "act")
     graph.add_edge("act", "reason")  # the loop
     graph.add_edge("summarize", END)

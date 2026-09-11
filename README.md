@@ -204,6 +204,37 @@ backend at import regardless of configuration. Scoring against a live calendar
 would create real events, defeat `reset_calendar()`, and make every score depend
 on that week's meetings.
 
+### The gate held and the report lied
+
+Every eval case auto-approved, so writes always succeeded and the agent's claim
+about what it booked always happened to match reality. Building a session API
+meant exercising the decline path for the first time, and it failed:
+
+```
+create_calendar_event: REFUSED  Not approved. The user said: too early, make it after lunch.
+find_free_slots:       {...}
+FINAL events_created:  ["Refactor Playwright login suite"]
+CALENDAR:              unchanged
+```
+
+Nothing was written without consent, so the approval gate worked. The report did
+not. The user was told their afternoon was blocked while the calendar was empty.
+
+The root cause was mundane. `MAX_TURNS` was 6, and the decline path needs more:
+a turn to refuse, one to look up slots again, one to re-book, on top of the
+search and availability turns every run spends. Out of turns, the graph routed
+to `summarize`, and the model wrote up the booking it had intended to make.
+
+Two changes came out of it. `events_created` is no longer the model's claim; the
+summarize node computes it from bookings that actually returned `created=true`,
+because the tool log cannot be talked into anything. And `revise_after_decline`
+now covers the path, with scripted answers to the approval gate so a case can
+decline as easily as approve.
+
+The lesson is about eval coverage rather than about this bug. Four metrics scored
+1.00 across six cases while a whole branch of the graph went untested. A suite
+only measures the paths it walks.
+
 ### Provider independence
 
 The project was built against one provider and moved to another mid-build. Only
@@ -315,6 +346,7 @@ repeats about weekly until the app is published.
 | `google_calendar.py` | Google Calendar over OAuth, imported only when selected |
 | `mock_data.py` | Fake task list and calendar, frozen clock, state reset |
 | `eval_cases.py` | The eval set and its written expectations |
+| `session.py` | start/resume wrapper so a server can drive the approval pause |
 | `eval_run.py` | Executes cases, saves traces |
 | `eval_metrics.py` | Four rule-based metrics, one LLM-judged |
 | `eval_score.py` | Scores saved traces, writes the report |

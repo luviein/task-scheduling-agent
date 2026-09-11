@@ -1,12 +1,12 @@
 {
   "model": "gemini-3.1-flash-lite",
-  "recorded_at": "2026-09-10T20:29:09+00:00",
+  "recorded_at": "2026-09-11T12:41:16+00:00",
   "results": [
     {
       "case": "search_only",
       "instruction": "What QA work do I have open? Don't book anything.",
       "error": null,
-      "seconds": 6.9,
+      "seconds": 9.6,
       "turns": 2,
       "path": [
         "reason",
@@ -38,7 +38,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for open QA tasks and found one, which I reported to you.",
+        "summary": "I searched for open QA tasks and identified one: Refactor Playwright login suite.",
         "tasks_found": [
           "Refactor Playwright login suite"
         ],
@@ -66,7 +66,7 @@
       "case": "book_high_priority",
       "instruction": "Find my open AI tasks and book an hour tomorrow for the highest priority one.",
       "error": null,
-      "seconds": 7.4,
+      "seconds": 17.7,
       "turns": 4,
       "path": [
         "reason",
@@ -153,7 +153,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for open AI tasks, identified 'Write LangGraph agent draft' as the highest priority one, and successfully booked it for tomorrow, September 11th, at 09:30.",
+        "summary": "I identified two high-priority AI tasks and scheduled the first one, 'Write LangGraph agent draft', for tomorrow morning.",
         "tasks_found": [
           "Write LangGraph agent draft",
           "Publish DeepEval results"
@@ -191,7 +191,7 @@
       "case": "conflict_retry",
       "instruction": "Book an hour at 9am tomorrow to work on the Playwright login suite refactor.",
       "error": null,
-      "seconds": 33.1,
+      "seconds": 6.2,
       "turns": 5,
       "path": [
         "reason",
@@ -280,7 +280,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for the Playwright task, found 'Refactor Playwright login suite', and scheduled it for tomorrow starting at 09:30 as the 09:00 slot was unavailable.",
+        "summary": "I successfully booked the Refactor Playwright login suite task for tomorrow, 2026-09-11, from 09:30 to 10:30, since the requested 09:00 slot was unavailable.",
         "tasks_found": [
           "Refactor Playwright login suite"
         ],
@@ -317,12 +317,9 @@
       "case": "no_such_task",
       "instruction": "Schedule two hours tomorrow to do my tax return.",
       "error": null,
-      "seconds": 12.3,
-      "turns": 5,
+      "seconds": 6.9,
+      "turns": 4,
       "path": [
-        "reason",
-        "confirm(skipped)",
-        "act",
         "reason",
         "confirm(skipped)",
         "act",
@@ -336,15 +333,6 @@
         "summarize"
       ],
       "tool_calls": [
-        {
-          "tool": "search_tasks",
-          "ok": true,
-          "output": {
-            "matches": [],
-            "count": 0
-          },
-          "error": null
-        },
         {
           "tool": "search_tasks",
           "ok": true,
@@ -414,7 +402,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for the task 'tax return' but it was not found, so I provided a list of open tasks instead.",
+        "summary": "I searched for a tax return task but it did not exist in your open tasks list. I informed you about the existing tasks and kept the request unresolved.",
         "tasks_found": [
           "Write LangGraph agent draft",
           "Refactor Playwright login suite",
@@ -423,7 +411,7 @@
         ],
         "events_created": [],
         "unresolved": [
-          "Schedule two hours for tax return: task does not exist."
+          "Could not schedule 'tax return' because no such task exists in the system."
         ]
       },
       "calendar_after": [
@@ -447,7 +435,7 @@
       "case": "multi_step",
       "instruction": "Book separate one-hour slots tomorrow afternoon for both of my open high priority AI tasks.",
       "error": null,
-      "seconds": 13.2,
+      "seconds": 46.8,
       "turns": 5,
       "path": [
         "reason",
@@ -553,7 +541,7 @@
         }
       ],
       "final": {
-        "summary": "I scheduled two high-priority AI tasks for tomorrow afternoon, September 11th, at 15:00 and 16:00.",
+        "summary": "I successfully booked two one-hour slots for your high-priority AI tasks on September 11th, 2026, during the afternoon.",
         "tasks_found": [
           "Write LangGraph agent draft",
           "Publish DeepEval results"
@@ -596,10 +584,171 @@
       ]
     },
     {
+      "case": "revise_after_decline",
+      "instruction": "Book an hour tomorrow morning for the Playwright login suite refactor.",
+      "error": null,
+      "seconds": 7.0,
+      "turns": 7,
+      "path": [
+        "reason",
+        "confirm(skipped)",
+        "act",
+        "reason",
+        "confirm(skipped)",
+        "act",
+        "reason",
+        "confirm(skipped)",
+        "act",
+        "reason",
+        "confirm(revise)",
+        "act",
+        "reason",
+        "confirm(skipped)",
+        "act",
+        "reason",
+        "confirm(approved)",
+        "act",
+        "reason",
+        "summarize"
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [],
+            "count": 0
+          },
+          "error": null
+        },
+        {
+          "tool": "search_tasks",
+          "ok": true,
+          "output": {
+            "matches": [
+              {
+                "id": "T-2",
+                "title": "Refactor Playwright login suite",
+                "status": "open",
+                "priority": "medium",
+                "tags": [
+                  "qa",
+                  "testing"
+                ]
+              }
+            ],
+            "count": 1
+          },
+          "error": null
+        },
+        {
+          "tool": "find_free_slots",
+          "ok": true,
+          "output": {
+            "slots": [
+              "09:30",
+              "10:00",
+              "10:30",
+              "11:00",
+              "11:30",
+              "12:00",
+              "12:30",
+              "13:00",
+              "15:00",
+              "15:30",
+              "16:00",
+              "16:30",
+              "17:00"
+            ],
+            "count": 13
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": false,
+          "output": null,
+          "error": "Not approved. The user said: too early, make it after lunch. Nothing has been booked yet. Call create_calendar_event again with a time that matches what they asked for, or explain why no such time exists. Do not stop without doing one of those."
+        },
+        {
+          "tool": "find_free_slots",
+          "ok": true,
+          "output": {
+            "slots": [
+              "09:30",
+              "10:00",
+              "10:30",
+              "11:00",
+              "11:30",
+              "12:00",
+              "12:30",
+              "13:00",
+              "15:00",
+              "15:30",
+              "16:00",
+              "16:30",
+              "17:00"
+            ],
+            "count": 13
+          },
+          "error": null
+        },
+        {
+          "tool": "create_calendar_event",
+          "ok": true,
+          "output": {
+            "created": true,
+            "event": {
+              "id": "E-3",
+              "title": "Refactor Playwright login suite",
+              "date": "2026-09-11",
+              "start_time": "13:00",
+              "duration_minutes": 60
+            },
+            "conflict_with": null
+          },
+          "error": null
+        }
+      ],
+      "final": {
+        "summary": "I successfully booked the 'Refactor Playwright login suite' task for September 11, 2026, at 13:00.",
+        "tasks_found": [
+          "Refactor Playwright login suite"
+        ],
+        "events_created": [
+          "Refactor Playwright login suite"
+        ],
+        "unresolved": []
+      },
+      "calendar_after": [
+        {
+          "id": "E-1",
+          "title": "Standup",
+          "date": "2026-09-11",
+          "start_time": "09:00",
+          "duration_minutes": 15
+        },
+        {
+          "id": "E-2",
+          "title": "Design review",
+          "date": "2026-09-11",
+          "start_time": "14:00",
+          "duration_minutes": 60
+        },
+        {
+          "id": "E-3",
+          "title": "Refactor Playwright login suite",
+          "date": "2026-09-11",
+          "start_time": "13:00",
+          "duration_minutes": 60
+        }
+      ]
+    },
+    {
       "case": "ambiguous_target",
       "instruction": "Book two hours on Friday.",
       "error": null,
-      "seconds": 5.5,
+      "seconds": 3.0,
       "turns": 2,
       "path": [
         "reason",
@@ -660,7 +809,7 @@
         }
       ],
       "final": {
-        "summary": "I searched for available tasks and asked the user to specify which one they would like to work on this Friday, 2026-09-11.",
+        "summary": "I searched for tasks and asked the user to clarify which of the four available tasks they would like to schedule for the two-hour block on Friday.",
         "tasks_found": [
           "Write LangGraph agent draft",
           "Refactor Playwright login suite",
@@ -669,7 +818,7 @@
         ],
         "events_created": [],
         "unresolved": [
-          "Booking for Friday could not be completed because the user has not specified which task to work on from the list provided."
+          "Could not schedule a task because the user has not specified which of the four identified tasks to work on."
         ]
       },
       "calendar_after": [

@@ -16,6 +16,12 @@ class EvalCase(BaseModel):
     expect_tasks: list[str] = Field(default_factory=list, description="Task titles that must appear in tasks_found.")
     expect_events: list[str] = Field(default_factory=list, description="Event titles that must be booked.")
     expect_unresolved: bool = Field(default=False, description="Should the agent report something it could not do?")
+    approvals: list[bool | str] = Field(
+        default_factory=list,
+        description="Answers to give the approval gate, in order. True approves, False is a "
+        "hard no, a string is a counter-proposal. Once exhausted, everything is approved, "
+        "so an empty list means the old auto-approve behaviour.",
+    )
     max_tool_calls: int = Field(description="Ceiling on tool calls: the minimum this case needs, plus one retry.")
     notes: str = ""
 
@@ -63,6 +69,20 @@ CASES: list[EvalCase] = [
         expected_tools=["search_tasks", "find_free_slots", "create_calendar_event"],
         expect_events=["Write LangGraph agent draft", "Publish DeepEval results"],
         notes="Two bookings, and 14:00 is taken by the design review.",
+    ),
+    EvalCase(
+        name="revise_after_decline",
+        max_tool_calls=6,  # Search, availability, a refused booking, availability, the real booking. One spare.
+        instruction="Book an hour tomorrow morning for the Playwright login suite refactor.",
+        approvals=["too early, make it after lunch"],
+        expected_tools=["search_tasks", "find_free_slots", "create_calendar_event"],
+        expect_events=["Refactor Playwright login suite"],
+        notes=(
+            "The first proposal is declined with a counter-proposal rather than a refusal. "
+            "The agent must book a later slot and actually write it. Added after a run that "
+            "reported this booking as done while the calendar stayed empty: the gate held, "
+            "the report lied."
+        ),
     ),
     EvalCase(
         name="ambiguous_target",

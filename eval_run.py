@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent import MODEL, approve_everything, run
+from agent import MODEL, run
 from calendar_backend import MockCalendar, use_backend
 from eval_cases import CASES
 from mock_data import CALENDAR, reset_calendar
@@ -30,9 +30,15 @@ def run_case(case) -> dict:
     reset_calendar()
     started = time.perf_counter()
 
+    # Scripted answers, consumed one per pause. Cases that say nothing get the
+    # old behaviour: the gate is still asked, the harness still says yes.
+    answers = list(case.approvals)
+
+    def decide(request: dict) -> bool | str:
+        return answers.pop(0) if answers else True
+
     try:
-        # Auto-approve: the confirmation path still runs, the harness just answers yes.
-        state = run(case.instruction, decide=approve_everything)
+        state = run(case.instruction, decide=decide)
         final = state.final.model_dump() if state.final else None
         error = None
     except Exception as exc:  # a crashed case is a result, not a reason to abandon the suite

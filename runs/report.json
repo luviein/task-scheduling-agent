@@ -1,6 +1,6 @@
 {
   "model": "gemini-3.1-flash-lite",
-  "recorded_at": "2026-09-10T20:29:09+00:00",
+  "recorded_at": "2026-09-11T12:41:16+00:00",
   "cases": [
     {
       "case": "search_only",
@@ -86,9 +86,9 @@
           "reason": "called exactly what was expected: search_tasks"
         },
         "Tool Efficiency": {
-          "score": 0.75,
-          "passed": false,
-          "reason": "4 calls, ceiling 3; search_tasks called 4 times"
+          "score": 1.0,
+          "passed": true,
+          "reason": "3 calls, ceiling 3"
         },
         "Task Execution": {
           "score": 1.0,
@@ -124,6 +124,31 @@
           "score": 1.0,
           "passed": true,
           "reason": "all 4 reported titles exist in the task list"
+        }
+      }
+    },
+    {
+      "case": "revise_after_decline",
+      "metrics": {
+        "Tool Selection": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "called exactly what was expected: create_calendar_event, find_free_slots, search_tasks"
+        },
+        "Tool Efficiency": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "6 calls, ceiling 6"
+        },
+        "Task Execution": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "booked ['Refactor Playwright login suite'], expected ['Refactor Playwright login suite']"
+        },
+        "Task Grounding": {
+          "score": 1.0,
+          "passed": true,
+          "reason": "all 2 reported titles exist in the task list"
         }
       }
     },
